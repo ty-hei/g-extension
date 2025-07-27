@@ -47,43 +47,38 @@ async function initialize() {
 
     // Load active API configuration
     try {
-        const result = await chrome.storage.sync.get(['apiConfigurations', 'activeConfigurationId']); //
-        const configs = result.apiConfigurations || []; //
-        const activeId = result.activeConfigurationId; //
+        const result = await chrome.storage.sync.get(['apiConfigurations', 'activeConfigurationId']);
+        const configs = result.apiConfigurations || [];
+        const activeId = result.activeConfigurationId;
         
         let activeConfig = null;
         if (activeId && configs.length > 0) {
-            activeConfig = configs.find(c => c.id === activeId); //
+            activeConfig = configs.find(c => c.id === activeId);
         }
-        // If no activeId, or activeId not found, try to use the first available config
         if (!activeConfig && configs.length > 0) {
-            activeConfig = configs[0]; //
-            // Optionally, save this as the new activeConfigurationId
-            // await chrome.storage.sync.set({ activeConfigurationId: activeConfig.id });
+            activeConfig = configs[0];
             console.warn("No active configuration found or ID mismatch, defaulting to the first available configuration.");
         }
 
         if (activeConfig) {
-            currentApiKey = activeConfig.apiKey; //
-            currentApiType = activeConfig.apiType; //
-            currentApiEndpoint = activeConfig.apiEndpoint || ''; // Ensure empty string if undefined //
-            currentModelName = activeConfig.modelName; //
+            currentApiKey = activeConfig.apiKey;
+            currentApiType = activeConfig.apiType;
+            currentApiEndpoint = activeConfig.apiEndpoint || '';
+            currentModelName = activeConfig.modelName;
             
-            // Basic validation of the loaded active config
             if (!currentApiKey || !currentModelName || (currentApiType === 'openai' && !currentApiEndpoint)) {
                  const errorText = '错误：当前活动的API配置不完整。请<a href="#" id="open-options-link">检查插件选项</a>。';
                  addMessageToChat({ role: 'model', parts: [{text: errorText}], timestamp: Date.now() }); 
                  disableInputs(); 
             } else {
-                // Add a temporary status message that will be removed.
-                const tempStatusMsg = addMessageToChat({ role: 'model', parts: [{text: `已加载配置: "${activeConfig.configName}" (${activeConfig.apiType})`}], timestamp: Date.now(), isTempStatus: true }); //
-                setTimeout(() => removeMessageByContentCheck(msg => msg.isTempStatus && msg.timestamp === tempStatusMsg.timestamp && msg.parts[0].text.includes("已加载配置")), 3000);
-                enableInputs(); //
+                const tempStatusMsg = addMessageToChat({ role: 'model', parts: [{text: `已加载配置: "${activeConfig.configName}" (${activeConfig.apiType})`}], timestamp: Date.now(), isTempStatus: true });
+                setTimeout(() => removeMessageByContentCheck(msg => msg.isTempStatus && msg.timestamp === tempStatusMsg.timestamp), 3000);
+                enableInputs();
             }
         } else {
             const errorText = '错误：未找到任何API配置或未设置活动配置。请<a href="#" id="open-options-link">在插件选项中添加并设置一个活动配置</a>。';
             addMessageToChat({ role: 'model', parts: [{text: errorText}], timestamp: Date.now() }); 
-            disableInputs(); //
+            disableInputs();
         }
 
     } catch (e) {
@@ -92,117 +87,107 @@ async function initialize() {
         disableInputs();
     }
 
-    await loadArchivedChats(); //
-    loadChatHistory(); // This now loads history and potentially sets currentChat //
-    await loadPromptTemplates(); //
+    await loadArchivedChats();
+    loadChatHistory();
+    await loadPromptTemplates();
 
-    // If currentChat is still empty after loadChatHistory (e.g. first run or all history cleared)
     if (!currentChat || currentChat.length === 0) {
-        renderCurrentChat(); // Ensure UI is at least cleared or shows an initial state
+        renderCurrentChat();
     }
 
+    if (sendMessageButton) sendMessageButton.addEventListener('click', handleSendMessage);
 
-    if (sendMessageButton) sendMessageButton.addEventListener('click', handleSendMessage); //
-
-    if (chatInput && sendMessageButton) {
-        chatInput.addEventListener('keydown', (event) => { //
-            if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) { //
-                event.preventDefault(); sendMessageButton.click(); //
+    if (chatInput) {
+        chatInput.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
+                event.preventDefault();
+                sendMessageButton.click();
             }
         });
     }
 
-    if (summarizePageButton) summarizePageButton.addEventListener('click', handleSummarizeCurrentPage); //
+    if (summarizePageButton) summarizePageButton.addEventListener('click', handleSummarizeCurrentPage);
     if (extractContentButton) extractContentButton.addEventListener('click', handleExtractContent);
-    if (clearSelectedTextButton) clearSelectedTextButton.addEventListener('click', clearSelectedTextPreview); //
-    if (clearSelectedImageButton) clearSelectedImageButton.addEventListener('click', clearSelectedImagePreview); //
-
-
+    if (clearSelectedTextButton) clearSelectedTextButton.addEventListener('click', clearSelectedTextPreview);
+    if (clearSelectedImageButton) clearSelectedImageButton.addEventListener('click', clearSelectedImagePreview);
     if (clearAllHistoryButton) {
-        clearAllHistoryButton.addEventListener('click', () => { //
-            if (confirm("确定要清除所有对话历史吗？此操作无法撤销。")) { //
-                allChats = []; //
-                currentChat = []; //
-                saveChatHistory(); // This will save empty allChats //
-                renderCurrentChat(); // Clears the current chat display //
-                addMessageToChat({ role: 'model', parts: [{text: '所有对话历史已清除。'}], timestamp: Date.now() }); //
+        clearAllHistoryButton.addEventListener('click', () => {
+            if (confirm("确定要清除所有对话历史吗？此操作无法撤销。")) {
+                allChats = [];
+                currentChat = [];
+                saveChatHistory();
+                renderCurrentChat();
+                addMessageToChat({ role: 'model', parts: [{text: '所有对话历史已清除。'}], timestamp: Date.now() });
             }
         });
     }
 
-    if (splitChatButton) splitChatButton.addEventListener('click', handleSplitChat); //
+    if (splitChatButton) splitChatButton.addEventListener('click', handleSplitChat);
     if (viewArchivedChatsButton) {
-        viewArchivedChatsButton.addEventListener('click', () => { //
-            chrome.tabs.create({ url: chrome.runtime.getURL('archive.html') }); //
+        viewArchivedChatsButton.addEventListener('click', () => {
+            chrome.tabs.create({ url: chrome.runtime.getURL('archive.html') });
         });
     }
     if (managePromptsButton) {
-        managePromptsButton.addEventListener('click', () => { //
-            chrome.tabs.create({ url: chrome.runtime.getURL('prompts.html') }); //
+        managePromptsButton.addEventListener('click', () => {
+            chrome.tabs.create({ url: chrome.runtime.getURL('prompts.html') });
         });
     }
 
-
-    chrome.storage.onChanged.addListener(async (changes, namespace) => { //
-        if (namespace === 'sync' && (changes.apiConfigurations || changes.activeConfigurationId)) { //
-            // Reload configurations if either the list or the active ID changes
-            const result = await chrome.storage.sync.get(['apiConfigurations', 'activeConfigurationId']); //
-            const configs = result.apiConfigurations || []; //
-            const activeId = result.activeConfigurationId; //
+    chrome.storage.onChanged.addListener(async (changes, namespace) => {
+        if (namespace === 'sync' && (changes.apiConfigurations || changes.activeConfigurationId)) {
+            const result = await chrome.storage.sync.get(['apiConfigurations', 'activeConfigurationId']);
+            const configs = result.apiConfigurations || [];
+            const activeId = result.activeConfigurationId;
             let activeConfig = null;
 
             if (activeId && configs.length > 0) {
-                activeConfig = configs.find(c => c.id === activeId); //
+                activeConfig = configs.find(c => c.id === activeId);
             }
-            if (!activeConfig && configs.length > 0) { // Fallback to first if activeId is somehow invalid
-                 activeConfig = configs[0]; //
-                 console.warn("Active configuration ID not found in list after change, defaulting to first available.");
-                 // Optionally, update activeConfigurationId in storage here if you want to auto-correct
-                 // await chrome.storage.sync.set({ activeConfigurationId: activeConfig.id });
+            if (!activeConfig && configs.length > 0) {
+                 activeConfig = configs[0];
+                 console.warn("Active configuration ID not found after change, defaulting to first.");
             }
             
             let configStatusMessage = 'API 配置已更新。';
             if (activeConfig) {
-                currentApiKey = activeConfig.apiKey; //
-                currentApiType = activeConfig.apiType; //
-                currentApiEndpoint = activeConfig.apiEndpoint || ''; //
-                currentModelName = activeConfig.modelName; //
+                currentApiKey = activeConfig.apiKey;
+                currentApiType = activeConfig.apiType;
+                currentApiEndpoint = activeConfig.apiEndpoint || '';
+                currentModelName = activeConfig.modelName;
                 configStatusMessage = `已切换到配置: "${activeConfig.configName}" (${activeConfig.apiType})`;
 
-                // Re-validate and enable/disable inputs
-                if (!currentApiKey || !currentModelName || (currentApiType === 'openai' && !currentApiEndpoint)) { //
+                if (!currentApiKey || !currentModelName || (currentApiType === 'openai' && !currentApiEndpoint)) {
                     const errorText = '错误：新的活动API配置不完整。请<a href="#" id="open-options-link">检查插件选项</a>。';
                     addMessageToChat({ role: 'model', parts: [{text: errorText}], timestamp: Date.now() }); 
                     disableInputs(); 
                 } else {
-                    enableInputs(); //
+                    enableInputs();
                 }
-            } else { // No active config could be determined
-                currentApiKey = null; //
-                currentApiType = 'gemini'; // Reset to default or keep previous
+            } else {
+                currentApiKey = null;
+                currentApiType = 'gemini';
                 currentApiEndpoint = '';
                 currentModelName = '';
                 configStatusMessage = '未找到有效的活动API配置。请在选项中设置。';
-                disableInputs(); //
+                disableInputs();
             }
-             addMessageToChat({ role: 'model', parts: [{text: configStatusMessage}], timestamp: Date.now() }); //
+             addMessageToChat({ role: 'model', parts: [{text: configStatusMessage}], timestamp: Date.now() });
         }
-        // --- Existing local storage listeners ---
-        if (namespace === 'local') { //
-            if (changes.geminiChatHistory) { //
-                allChats = (changes.geminiChatHistory.newValue || []).map(chat => chat.filter(msg => !msg.isTempStatus && !msg.isThinking)); //
-                // renderChatHistoryList(); // No longer needed
+        if (namespace === 'local') {
+            if (changes.geminiChatHistory) {
+                allChats = (changes.geminiChatHistory.newValue || []).map(chat => chat.filter(msg => !msg.isTempStatus && !msg.isThinking));
             }
-            if (changes.geminiArchivedChats) { //
-                archivedChats = changes.geminiArchivedChats.newValue || []; //
-                updateArchivedChatsButtonCount(); //
+            if (changes.geminiArchivedChats) {
+                archivedChats = changes.geminiArchivedChats.newValue || [];
+                updateArchivedChatsButtonCount();
             }
-            if (changes.promptTemplates) { //
-                await loadPromptTemplates(); // This will re-render shortcuts //
+            if (changes.promptTemplates) {
+                await loadPromptTemplates();
             }
         }
     });
-    chrome.runtime.onMessage.addListener(handleRuntimeMessages); //
+    chrome.runtime.onMessage.addListener(handleRuntimeMessages);
 }
 
 async function loadPromptTemplates() {
@@ -214,23 +199,18 @@ async function loadPromptTemplates() {
 
     if (result.promptTemplates && result.promptTemplates.length > 0) {
         promptTemplates = result.promptTemplates;
-        // Ensure presets are always present and correctly marked, but keep user's edits to content/name
         presets.forEach(presetDef => {
             const existing = promptTemplates.find(p => p.id === presetDef.id);
             if (!existing) {
-                promptTemplates.unshift({ ...presetDef }); // Add if missing
+                promptTemplates.unshift({ ...presetDef });
             } else {
-                existing.isPreset = true; // Ensure it's marked as preset
-                // Optionally, update name/content to default if they want to "reset" a preset
-                // For now, user's changes to preset name/content are kept.
+                existing.isPreset = true;
             }
         });
     } else {
         promptTemplates = [...presets];
-        // Save if storage was empty and we just populated with presets
         await chrome.storage.local.set({ promptTemplates: promptTemplates });
     }
-    // Ensure custom prompts are marked correctly
     promptTemplates.forEach(p => {
         if (!presets.some(presetDef => presetDef.id === p.id)) {
             p.isPreset = false;
@@ -244,7 +224,6 @@ function renderPromptShortcuts() {
     if (!promptShortcutsContainer) return;
     promptShortcutsContainer.innerHTML = '';
 
-    // Sort prompts: presets first, then custom by name
     const sortedPrompts = [...promptTemplates].sort((a, b) => {
         if (a.isPreset && !b.isPreset) return -1;
         if (!a.isPreset && b.isPreset) return 1;
@@ -268,7 +247,7 @@ function applyPromptTemplate(template) {
     }
     chatInput.value = content;
     chatInput.focus();
-    chatInput.scrollTop = chatInput.scrollHeight; // Scroll to end if content is long
+    chatInput.scrollTop = chatInput.scrollHeight;
 }
 
 function displaySelectedImagePreview(imageUrl) {
@@ -301,7 +280,6 @@ function handleSplitChat() {
     const chatToProcess = currentChat.filter(msg => !(msg.isThinking || msg.isTempStatus));
 
     if (chatToProcess.length > 0) {
-        // Create a clean copy for archiving, removing transient properties
         const archivedCopy = chatToProcess.map(m => {
             const {isThinking, isTempStatus, archived, ...rest} = m;
             return rest;
@@ -309,24 +287,21 @@ function handleSplitChat() {
         archivedChats.unshift(archivedCopy);
         saveArchivedChats();
 
-        // Also save this completed chat to the main history if it's not already the head
-        // (it usually will be the head, representing the current active session)
         let alreadyInAllChats = false;
         if (allChats.length > 0 && JSON.stringify(allChats[0]) === JSON.stringify(chatToProcess)) {
             alreadyInAllChats = true;
         }
-        if (!alreadyInAllChats) { // If it's a new distinct chat
-            allChats.unshift([...chatToProcess]); // Add a copy
-            if (allChats.length > 50) allChats.pop(); // Limit history size
+        if (!alreadyInAllChats) {
+            allChats.unshift([...chatToProcess]);
+            if (allChats.length > 50) allChats.pop();
             saveChatHistory();
-            // renderChatHistoryList(); // No list to render
         }
     }
 
-    currentChat = []; // Start a new chat
+    currentChat = [];
     renderCurrentChat();
     addMessageToChat({ role: 'model', parts: [{text: '对话已分割并存档。新的对话已开始。'}], timestamp: Date.now() });
-    saveCurrentChat(); // Save the new state (empty current chat, potentially updated allChats)
+    saveCurrentChat();
 }
 
 
@@ -335,7 +310,6 @@ function archiveQaPair(aiMessageIndexInCurrentChat) {
     if (!aiMessage || aiMessage.archived) return;
 
     let userMessage = null;
-    // Find the preceding user message that isn't a temp/thinking status
     for (let i = aiMessageIndexInCurrentChat - 1; i >= 0; i--) {
         if (currentChat[i].role === 'user' && !currentChat[i].isThinking && !currentChat[i].isTempStatus) {
             userMessage = currentChat[i];
@@ -344,7 +318,6 @@ function archiveQaPair(aiMessageIndexInCurrentChat) {
     }
 
     if (userMessage && aiMessage) {
-        // Create clean copies for archiving
         const userMessageCopy = {...userMessage};
         delete userMessageCopy.archived; delete userMessageCopy.isThinking; delete userMessageCopy.isTempStatus;
         const aiMessageCopy = {...aiMessage};
@@ -355,10 +328,9 @@ function archiveQaPair(aiMessageIndexInCurrentChat) {
         archivedChats.unshift(qaPairToArchive);
         saveArchivedChats();
 
-        // Mark the original AI message in currentChat as archived
-        aiMessage.archived = true; // This is a property of the message object in currentChat
-        renderCurrentChat(); // Re-render to show "已存档"
-        saveCurrentChat(); // Save currentChat with the 'archived' flag
+        aiMessage.archived = true;
+        renderCurrentChat();
+        saveCurrentChat();
 
         const tempStatusMsg = addMessageToChat({role: 'model', parts: [{text: '该问答已存档。'}], timestamp: Date.now(), isTempStatus: true});
         setTimeout(() => {
@@ -385,7 +357,6 @@ function archiveQaPair(aiMessageIndexInCurrentChat) {
 
 
 function handleRuntimeMessages(request, sender, sendResponse) {
-    // 使用 switch 语句使消息处理更清晰
     switch (request.type || request.action) {
         case 'TEXT_SELECTED_FOR_SIDEBAR':
             currentSelectedText = request.text;
@@ -400,7 +371,7 @@ function handleRuntimeMessages(request, sender, sendResponse) {
             sendResponse({status: "Image URL received in sidebar"});
             break;
 
-        case 'extractedPageContent': // from page_content_extractor.js
+        case 'extractedPageContent':
             removeMessageByContentCheck(msg => msg.isTempStatus && msg.parts[0].text.includes('正在提取页面主要内容'));
             if (request.error) {
                 addMessageToChat({ role: 'model', parts: [{text: `提取失败: ${request.error}${request.warning ? ' ('+request.warning+')' : ''}`}], timestamp: Date.now() });
@@ -417,7 +388,7 @@ function handleRuntimeMessages(request, sender, sendResponse) {
             sendResponse({status: "Page content processed"});
             break;
 
-        case 'EXTRACT_CONTENT_ERROR': // from background.js for special pages
+        case 'EXTRACT_CONTENT_ERROR':
             removeMessageByContentCheck(msg => msg.isTempStatus && msg.parts[0].text.includes('正在提取页面主要内容'));
             addMessageToChat({ role: 'model', parts: [{text: `提取失败: ${request.message}`}], timestamp: Date.now() });
             sendResponse({status: "Error notice displayed"});
@@ -435,7 +406,7 @@ function handleRuntimeMessages(request, sender, sendResponse) {
                 sendResponse({error: "No text provided"});
             } else {
                 const prompt = `请使用中文，清晰、简洁且全面地总结以下链接 (${linkTitle ? linkTitle + ' - ' : ''}${linkUrl}) 的主要内容。专注于核心信息，忽略广告、导航栏、页脚等非主要内容。如果内容包含技术信息或代码，请解释其核心概念和用途。如果是一篇文章，请提炼主要观点和论据。总结应易于理解，并抓住内容的精髓。\n\n链接内容文本如下：\n"${text}"`;
-                callApi(prompt, true, null).then(() => sendResponse({status: "Summary initiated"})); // Ensure callApi is used
+                callApi(prompt, true, null).then(() => sendResponse({status: "Summary initiated"}));
             }
             break;
         }
@@ -461,7 +432,7 @@ function handleRuntimeMessages(request, sender, sendResponse) {
             sendResponse({ status: "Sidebar initiated page summary." });
             break;
     }
-    return true; // 对异步 sendResponse 很重要
+    return true;
 }
 
 function removeMessageByContentCheck(conditionFn) {
@@ -469,7 +440,6 @@ function removeMessageByContentCheck(conditionFn) {
     currentChat = currentChat.filter(msg => !conditionFn(msg));
     if (currentChat.length < initialLength) {
         renderCurrentChat();
-        // saveCurrentChat(); // Save if a non-transient message was removed. For temp status, often not needed to save.
         return true;
     }
     return false;
@@ -483,20 +453,16 @@ async function handleSendMessage() {
 
     if (currentSelectedText && messageText.includes("{{text}}")) {
         userMessageForApi = messageText.replace(/{{text}}/g, currentSelectedText);
-        displayUserMessageInChat = userMessageForApi; // Display the version with text inserted
+        displayUserMessageInChat = userMessageForApi;
     } else if (currentSelectedText && !messageText.includes("{{text}}") && messageText) {
-        // If user types something AND there's selected text, but no {{text}} placeholder,
-        // assume they're asking about the selected text with their typed query.
         userMessageForApi = `关于以下引用内容：\n"${currentSelectedText}"\n\n我的问题/指令是：\n"${messageText}"`;
         displayUserMessageInChat = `(引用内容: ${currentSelectedText.substring(0,50)}...) ${messageText}`;
     } else if (currentSelectedText && !messageText) {
-        // If only selected text exists and user types nothing, use selected text as the primary query
         userMessageForApi = currentSelectedText;
         displayUserMessageInChat = currentSelectedText;
     }
 
-
-    const imageUrlToSend = currentSelectedImageUrl; // This is the URL of the image
+    const imageUrlToSend = currentSelectedImageUrl;
 
     if (!userMessageForApi.trim() && !imageUrlToSend) {
         const tempMsg = addMessageToChat({ role: 'model', parts: [{text: '请输入消息或选择图片/文本后再发送。'}], timestamp: Date.now(), isTempStatus: true });
@@ -504,34 +470,23 @@ async function handleSendMessage() {
         return;
     }
 
-    // Validation for API config before sending
-    if (!currentApiKey) {
-        addMessageToChat({ role: 'model', parts: [{text: '错误：API 密钥未设置。请在插件选项中设置。'}], timestamp: Date.now() });
+    if (!currentApiKey || !currentModelName || (currentApiType === 'openai' && !currentApiEndpoint)) {
+        addMessageToChat({ role: 'model', parts: [{text: '错误：API 配置不完整。请<a href="#" id="open-options-link">检查插件选项</a>。'}], timestamp: Date.now() });
         disableInputs(); return;
     }
-    if (!currentModelName) {
-        addMessageToChat({ role: 'model', parts: [{text: `错误：模型名称未设置。`}], timestamp: Date.now() });
-        disableInputs(); return;
-    }
-    if (currentApiType === 'openai' && !currentApiEndpoint) {
-        addMessageToChat({ role: 'model', parts: [{text: '错误：OpenAI API Endpoint 未设置。'}], timestamp: Date.now() });
-        disableInputs(); return;
-    }
-
 
     let finalDisplayMessage = displayUserMessageInChat;
-    let finalApiTextMessage = userMessageForApi; // This is what's sent as text part to API
+    let finalApiTextMessage = userMessageForApi;
 
     if (imageUrlToSend) {
-        if (!finalApiTextMessage.trim() && !currentSelectedText) { // If no text typed and no text selected
-            finalDisplayMessage = "(图片已选择)"; // User sees this
-            finalApiTextMessage = "请描述这张图片。"; // API gets this as default prompt for image
+        if (!finalApiTextMessage.trim() && !currentSelectedText) {
+            finalDisplayMessage = "(图片已选择)";
+            finalApiTextMessage = "请描述这张图片。";
         } else {
             finalDisplayMessage = finalDisplayMessage ? `${finalDisplayMessage} (附带图片)` : `(图片已选择，并结合当前文本)`;
         }
     }
 
-    // Ensure there's actually something to send after all processing
     if (!finalApiTextMessage.trim() && !imageUrlToSend) {
          const tempMsg = addMessageToChat({ role: 'model', parts: [{text: '没有有效内容发送。'}], timestamp: Date.now(), isTempStatus: true });
          setTimeout(() => removeMessageByContentCheck(msg => msg.timestamp === tempMsg.timestamp && msg.isTempStatus), 3000);
@@ -541,10 +496,10 @@ async function handleSendMessage() {
     addMessageToChat({ role: 'user', parts: [{text: finalDisplayMessage}], timestamp: Date.now() });
 
     chatInput.value = '';
-    clearSelectedTextPreview(); // Clear after message is constructed and added
-    clearSelectedImagePreview(); // Clear after message is constructed and added
+    clearSelectedTextPreview();
+    clearSelectedImagePreview();
 
-    await callApi(finalApiTextMessage, false, imageUrlToSend); // Use the potentially modified finalApiTextMessage
+    await callApi(finalApiTextMessage, false, imageUrlToSend);
 }
 
 function handleSummarizeCurrentPage() {
@@ -554,10 +509,10 @@ function handleSummarizeCurrentPage() {
         return;
     }
     const summaryRequestText = '(正在请求总结当前网页...)';
-    addMessageToChat({role: 'user', parts: [{text: summaryRequestText}], timestamp: Date.now(), isTempStatus: true }); // Make it temp
+    addMessageToChat({role: 'user', parts: [{text: summaryRequestText}], timestamp: Date.now(), isTempStatus: true });
 
     chrome.runtime.sendMessage({ action: "getAndSummarizePage" }, async (response) => {
-        removeMessageByContentCheck(msg => msg.isTempStatus && msg.parts[0].text === summaryRequestText); // Remove the temp message
+        removeMessageByContentCheck(msg => msg.isTempStatus && msg.parts[0].text === summaryRequestText);
 
         if (chrome.runtime.lastError) {
             addMessageToChat({role: 'model', parts: [{text: `总结错误 (通讯): ${chrome.runtime.lastError.message}`}], timestamp: Date.now() });
@@ -573,7 +528,7 @@ function handleSummarizeCurrentPage() {
             }
             const prompt = `请使用中文，清晰、简洁且全面地总结以下网页内容。如果内容包含技术信息或代码，请解释其核心概念和用途。如果是一篇文章，请提炼主要观点和论据。总结应易于理解，并抓住内容的精髓。\n\n网页内容如下：\n"${pageContent}"`;
             addMessageToChat({role: 'user', parts: [{text: `总结请求：当前页面 (内容长度: ${pageContent.length})`}], timestamp: Date.now()});
-            await callApi(prompt, true, null); // Use callApi
+            await callApi(prompt, true, null);
         } else if (response && response.error) {
             addMessageToChat({role: 'user', parts: [{text: `总结请求：当前页面`}], timestamp: Date.now()});
             addMessageToChat({role: 'model', parts: [{text: `总结错误: ${response.error}`}], timestamp: Date.now() });
@@ -585,17 +540,15 @@ function handleSummarizeCurrentPage() {
 }
 
 function handleExtractContent() {
-    if (!currentApiKey) { // Use API key check as a proxy for "is extension configured"
+    if (!currentApiKey) {
         addMessageToChat({ role: 'model', parts: [{text: '错误：API 配置不完整。请检查插件选项。'}], timestamp: Date.now() });
         disableInputs();
         return;
     }
     
-    const tempStatusMsg = addMessageToChat({role: 'model', parts: [{text: '正在提取页面主要内容...'}], timestamp: Date.now(), isTempStatus: true });
+    const tempStatusMsg = addMessageToChat({role: 'model', parts: [{text: '正在提取页面主要内容...'}] , timestamp: Date.now(), isTempStatus: true });
 
     chrome.runtime.sendMessage({ action: "extractActiveTabContent" }, (response) => {
-        // 这个回调主要处理来自 background 脚本的即时错误，比如注入失败。
-        // 实际内容会通过另一条消息返回。
         if (chrome.runtime.lastError || (response && !response.success)) {
             removeMessageByContentCheck(msg => msg.timestamp === tempStatusMsg.timestamp);
             const errorMessage = response?.error || chrome.runtime.lastError?.message || "未知错误";
@@ -611,8 +564,6 @@ function disableInputs() {
     if (summarizePageButton) summarizePageButton.disabled = true;
     if (extractContentButton) extractContentButton.disabled = true;
     if (splitChatButton) splitChatButton.disabled = true;
-    // Allow managing prompts even if API is not set
-    // if (managePromptsButton) managePromptsButton.disabled = true;
 }
 
 function enableInputs() {
@@ -621,23 +572,13 @@ function enableInputs() {
     if (summarizePageButton) summarizePageButton.disabled = false;
     if (extractContentButton) extractContentButton.disabled = false;
     if (splitChatButton) splitChatButton.disabled = false;
-    // if (managePromptsButton) managePromptsButton.disabled = false;
 }
 
 async function callApi(userMessageContent, isSummary = false, imageUrl = null) {
-    if (!currentApiKey) {
-        addMessageToChat({ role: 'model', parts: [{text: '错误：API 密钥未配置。'}], timestamp: Date.now() });
+    if (!currentApiKey || !currentModelName || (currentApiType === 'openai' && !currentApiEndpoint)) {
+        addMessageToChat({ role: 'model', parts: [{text: '错误：API 配置不完整。请<a href="#" id="open-options-link">在插件选项中设置</a>。'}], timestamp: Date.now() });
         return;
     }
-    if (!currentModelName) {
-        addMessageToChat({ role: 'model', parts: [{text: '错误：模型名称未配置。'}], timestamp: Date.now() });
-        return;
-    }
-    if (currentApiType === 'openai' && !currentApiEndpoint) {
-        addMessageToChat({ role: 'model', parts: [{text: '错误：OpenAI API Endpoint 未配置。'}], timestamp: Date.now() });
-        return;
-    }
-
 
     const thinkingMessage = addMessageToChat({ role: 'model', parts: [{text: '正在思考中...'}], timestamp: Date.now(), isThinking: true });
 
@@ -657,110 +598,86 @@ async function callApi(userMessageContent, isSummary = false, imageUrl = null) {
             } else { // Gemini
                 return {
                     role: msg.role,
-                    parts: [{ text: textContent }] // Gemini expects parts to be an array of objects
+                    parts: [{ text: textContent }]
                 };
             }
         });
 
     // ----- Specific API Request Construction -----
-    if (currentApiType === 'gemini') {
-        endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${currentModelName}:generateContent?key=${currentApiKey}`;
-        
-        const geminiUserParts = [];
-        if (userMessageContent && userMessageContent.trim() !== "") {
-            geminiUserParts.push({ text: userMessageContent });
-        }
-
-        let tempImageStatusMsg = null;
-        if (imageUrl) {
-            try {
-                tempImageStatusMsg = addMessageToChat({ role: 'model', parts: [{text: '正在加载并处理图片 (Gemini)...'}], timestamp: Date.now(), isTempStatus: true });
-                const response = await fetch(imageUrl);
-                if (!response.ok) throw new Error(`图片获取失败: HTTP ${response.status}`);
-                const blob = await response.blob();
-                const mimeType = blob.type || 'application/octet-stream';
-                if (!mimeType.startsWith('image/')) throw new Error(`无效图片MIME类型: ${mimeType}`);
-                
-                const base64Data = await new Promise((resolve, reject) => {
-                    const reader = new FileReader();
-                    reader.onloadend = () => resolve(reader.result.split(',')[1]);
-                    reader.onerror = (error) => reject(new Error("图片读取失败: " + error.message));
-                    reader.readAsDataURL(blob);
-                });
-                geminiUserParts.push({ inlineData: { mimeType: mimeType, data: base64Data } });
-                if (tempImageStatusMsg) removeMessageByContentCheck(msg => msg.timestamp === tempImageStatusMsg.timestamp && msg.isTempStatus);
-            } catch (error) {
-                if (tempImageStatusMsg) removeMessageByContentCheck(msg => msg.timestamp === tempImageStatusMsg.timestamp && msg.isTempStatus);
-                removeMessageByContentCheck(msg => msg.isThinking && msg.timestamp === thinkingMessage.timestamp);
-                addMessageToChat({ role: 'model', parts: [{text: `图片处理错误 (Gemini): ${error.message}`}], timestamp: Date.now() });
-                return;
+    try {
+        if (currentApiType === 'gemini') {
+            endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${currentModelName}:streamGenerateContent?key=${currentApiKey}&alt=sse`;
+            const geminiUserParts = [];
+            if (userMessageContent && userMessageContent.trim() !== "") {
+                geminiUserParts.push({ text: userMessageContent });
             }
-        }
-
-        if (geminiUserParts.length === 0) {
-            removeMessageByContentCheck(msg => msg.isThinking && msg.timestamp === thinkingMessage.timestamp);
-            addMessageToChat({ role: 'model', parts: [{text: '没有内容可以发送给AI。'}], timestamp: Date.now() });
-            return;
-        }
-        requestBody = { contents: [...historyForAPI, { role: "user", parts: geminiUserParts }] };
-
-    } else if (currentApiType === 'openai') {
-        endpoint = currentApiEndpoint;
-        headers['Authorization'] = `Bearer ${currentApiKey}`;
-
-        const openaiCurrentUserMessageContent = [];
-        if (userMessageContent && userMessageContent.trim() !== "") {
-            openaiCurrentUserMessageContent.push({ type: "text", text: userMessageContent });
-        }
-
-        let tempImageStatusMsg = null;
-        if (imageUrl) {
-            try {
-                tempImageStatusMsg = addMessageToChat({ role: 'model', parts: [{text: '正在加载并处理图片 (OpenAI)...'}], timestamp: Date.now(), isTempStatus: true });
-                const response = await fetch(imageUrl);
-                if (!response.ok) throw new Error(`图片获取失败: HTTP ${response.status}`);
-                const blob = await response.blob();
-                const mimeType = blob.type || 'application/octet-stream';
-                if (!mimeType.startsWith('image/')) throw new Error(`无效图片MIME类型: ${mimeType}`);
-
-                const base64DataUri = await new Promise((resolve, reject) => {
-                    const reader = new FileReader();
-                    reader.onloadend = () => resolve(reader.result); // Full data URI
-                    reader.onerror = (error) => reject(new Error("图片读取失败: " + error.message));
-                    reader.readAsDataURL(blob);
-                });
-                openaiCurrentUserMessageContent.push({ type: "image_url", image_url: { "url": base64DataUri } });
-                 if (tempImageStatusMsg) removeMessageByContentCheck(msg => msg.timestamp === tempImageStatusMsg.timestamp && msg.isTempStatus);
-            } catch (error) {
-                if (tempImageStatusMsg) removeMessageByContentCheck(msg => msg.timestamp === tempImageStatusMsg.timestamp && msg.isTempStatus);
-                removeMessageByContentCheck(msg => msg.isThinking && msg.timestamp === thinkingMessage.timestamp);
-                addMessageToChat({ role: 'model', parts: [{text: `图片处理错误 (OpenAI): ${error.message}`}], timestamp: Date.now() });
-                return;
+            if (imageUrl) {
+                 const tempImageStatusMsg = addMessageToChat({ role: 'model', parts: [{text: '正在加载并处理图片...'}], timestamp: Date.now(), isTempStatus: true });
+                try {
+                    const response = await fetch(imageUrl);
+                    if (!response.ok) throw new Error(`图片获取失败: HTTP ${response.status}`);
+                    const blob = await response.blob();
+                    const mimeType = blob.type || 'application/octet-stream';
+                    if (!mimeType.startsWith('image/')) throw new Error(`无效图片MIME类型: ${mimeType}`);
+                    const base64Data = await new Promise((resolve, reject) => {
+                        const reader = new FileReader();
+                        reader.onloadend = () => resolve(reader.result.split(',')[1]);
+                        reader.onerror = (error) => reject(new Error("图片读取失败: " + error.message));
+                        reader.readAsDataURL(blob);
+                    });
+                    geminiUserParts.push({ inlineData: { mimeType: mimeType, data: base64Data } });
+                } finally {
+                     if (tempImageStatusMsg) removeMessageByContentCheck(msg => msg.timestamp === tempImageStatusMsg.timestamp);
+                }
             }
-        }
-        
-        if (openaiCurrentUserMessageContent.length === 0) {
-            removeMessageByContentCheck(msg => msg.isThinking && msg.timestamp === thinkingMessage.timestamp);
-            addMessageToChat({ role: 'model', parts: [{text: '没有内容可以发送给AI。'}], timestamp: Date.now() });
-            return;
-        }
-        // If only image is sent to OpenAI, add a default text part
-        if (openaiCurrentUserMessageContent.some(c => c.type === 'image_url') && !openaiCurrentUserMessageContent.some(c => c.type === 'text')) {
-            openaiCurrentUserMessageContent.unshift({ type: "text", text: "请描述这张图片。" });
-        }
+            if (geminiUserParts.length === 0) throw new Error("没有内容可以发送给AI。");
+            requestBody = { contents: [...historyForAPI, { role: "user", parts: geminiUserParts }] };
 
-        requestBody = {
-            model: currentModelName,
-            messages: [...historyForAPI, { role: "user", content: openaiCurrentUserMessageContent }],
-            // max_tokens: 2048 // Example, can be configured
-        };
-    } else {
-        addMessageToChat({ role: 'model', parts: [{text: `错误：不支持的API类型 "${currentApiType}"。`}], timestamp: Date.now() });
+        } else if (currentApiType === 'openai') {
+            endpoint = currentApiEndpoint;
+            headers['Authorization'] = `Bearer ${currentApiKey}`;
+            const openaiCurrentUserMessageContent = [];
+            if (userMessageContent && userMessageContent.trim() !== "") {
+                openaiCurrentUserMessageContent.push({ type: "text", text: userMessageContent });
+            }
+            if (imageUrl) {
+                const tempImageStatusMsg = addMessageToChat({ role: 'model', parts: [{text: '正在加载并处理图片...'}], timestamp: Date.now(), isTempStatus: true });
+                try {
+                    const response = await fetch(imageUrl);
+                    if (!response.ok) throw new Error(`图片获取失败: HTTP ${response.status}`);
+                    const blob = await response.blob();
+                    const mimeType = blob.type || 'application/octet-stream';
+                    if (!mimeType.startsWith('image/')) throw new Error(`无效图片MIME类型: ${mimeType}`);
+                    const base64DataUri = await new Promise((resolve, reject) => {
+                        const reader = new FileReader();
+                        reader.onloadend = () => resolve(reader.result);
+                        reader.onerror = (error) => reject(new Error("图片读取失败: " + error.message));
+                        reader.readAsDataURL(blob);
+                    });
+                    openaiCurrentUserMessageContent.push({ type: "image_url", image_url: { "url": base64DataUri } });
+                } finally {
+                    if (tempImageStatusMsg) removeMessageByContentCheck(msg => msg.timestamp === tempImageStatusMsg.timestamp);
+                }
+            }
+            if (openaiCurrentUserMessageContent.length === 0) throw new Error("没有内容可以发送给AI。");
+            if (openaiCurrentUserMessageContent.some(c => c.type === 'image_url') && !openaiCurrentUserMessageContent.some(c => c.type === 'text')) {
+                openaiCurrentUserMessageContent.unshift({ type: "text", text: "请描述这张图片。" });
+            }
+            requestBody = {
+                model: currentModelName,
+                messages: [...historyForAPI, { role: "user", content: openaiCurrentUserMessageContent }],
+                stream: true
+            };
+        } else {
+            throw new Error(`不支持的API类型 "${currentApiType}"。`);
+        }
+    } catch (error) {
         removeMessageByContentCheck(msg => msg.isThinking && msg.timestamp === thinkingMessage.timestamp);
+        addMessageToChat({ role: 'model', parts: [{text: `请求构建失败: ${error.message}`}], timestamp: Date.now() });
         return;
     }
 
-    // ----- API Call and Response Handling -----
+    // ----- API Call and Streaming Response Handling -----
     try {
         const response = await fetch(endpoint, {
             method: 'POST',
@@ -771,57 +688,119 @@ async function callApi(userMessageContent, isSummary = false, imageUrl = null) {
         removeMessageByContentCheck(msg => msg.isThinking && msg.timestamp === thinkingMessage.timestamp);
 
         if (!response.ok) {
-            const errorData = await response.json().catch(() => ({ error: { message: `HTTP ${response.status} ${response.statusText}` } }));
-            console.error(`${currentApiType} API Error:`, errorData);
-            let detailedErrorMessage = `API 调用失败 (${currentApiType}): ${errorData.error?.message || response.statusText}`;
-            if (errorData.error?.details && currentApiType === 'gemini') {
-                detailedErrorMessage += ` 详情: ${JSON.stringify(errorData.error.details)}`;
-            } else if (errorData.error?.type && currentApiType === 'openai') {
-                 detailedErrorMessage += ` 类型: ${errorData.error.type}`;
+            let friendlyErrorMessage = '';
+            const errorText = await response.text();
+            let errorDetails = '';
+            try {
+                const errorJson = JSON.parse(errorText);
+                errorDetails = errorJson.error?.message || JSON.stringify(errorJson.error);
+            } catch {
+                errorDetails = errorText.substring(0, 200) + (errorText.length > 200 ? '...' : '');
             }
-            addMessageToChat({ role: 'model', parts: [{text: detailedErrorMessage}], timestamp: Date.now() });
+
+            switch (response.status) {
+                case 401:
+                case 403:
+                    friendlyErrorMessage = `API 认证失败 (代码: ${response.status})。请检查您的 API 密钥是否正确、有效，并拥有所需权限。 <a href="#" id="open-options-link">检查配置</a>。<br><small>详情: ${errorDetails}</small>`;
+                    break;
+                case 429:
+                    friendlyErrorMessage = `API 请求频率超限 (代码: 429)。您可能已超出当前配额，请检查您的服务商后台或稍后再试。<br><small>详情: ${errorDetails}</small>`;
+                    break;
+                case 500:
+                case 502:
+                case 503:
+                case 504:
+                    friendlyErrorMessage = `AI 服务端出现临时错误 (代码: ${response.status})。这通常是暂时性问题，请稍后重试。<br><small>详情: ${errorDetails}</small>`;
+                    break;
+                default:
+                    friendlyErrorMessage = `API 调用失败 (代码: ${response.status})。请检查模型名称和API端点是否正确。<br><small>详情: ${errorDetails}</small>`;
+            }
+            addMessageToChat({ role: 'model', parts: [{text: friendlyErrorMessage}], timestamp: Date.now() });
             return;
         }
 
-        const data = await response.json();
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
         let aiResponseText = '';
+        let aiMessage = null;
+        let buffer = '';
 
-        if (currentApiType === 'gemini') {
-            if (data.candidates && data.candidates[0]?.content?.parts) {
-                aiResponseText = data.candidates[0].content.parts.map(part => part.text).join("\n");
-            } else if (data.promptFeedback?.blockReason) {
-                 aiResponseText = `请求被阻止 (Gemini): ${data.promptFeedback.blockReason}. ${data.promptFeedback.blockReasonMessage || ''}`;
-            } else {
-                console.warn("Gemini API Response did not contain expected content:", data);
-                aiResponseText = '未能从Gemini API获取有效回复。';
-            }
-        } else if (currentApiType === 'openai') {
-            if (data.choices && data.choices[0]?.message?.content) {
-                aiResponseText = data.choices[0].message.content;
-            } else if (data.error) { // Explicit error in OpenAI response body
-                 aiResponseText = `OpenAI API 错误: ${data.error.message}`;
-            } else {
-                console.warn("OpenAI API Response did not contain expected content:", data);
-                aiResponseText = '未能从OpenAI API获取有效回复。';
+        while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
+            
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop(); 
+
+            for (const line of lines) {
+                if (line.trim() === '' || !line.startsWith('data: ')) continue;
+
+                const jsonStr = line.substring(6);
+                if (jsonStr === '[DONE]') break;
+
+                try {
+                    const data = JSON.parse(jsonStr);
+                    let chunkText = '';
+
+                    if (currentApiType === 'gemini') {
+                        if (data.candidates && data.candidates[0]?.content?.parts) {
+                            chunkText = data.candidates[0].content.parts.map(part => part.text).join("");
+                        }
+                    } else if (currentApiType === 'openai') {
+                        if (data.choices && data.choices[0]?.delta?.content) {
+                            chunkText = data.choices[0].delta.content;
+                        }
+                    }
+
+                    if (chunkText) {
+                        if (!aiMessage) {
+                            aiMessage = addMessageToChat({ role: 'model', parts: [{text: ''}], timestamp: Date.now() });
+                        }
+                        aiResponseText += chunkText;
+                        aiMessage.parts[0].text = aiResponseText;
+                        renderCurrentChat();
+                    }
+                } catch (error) {
+                    console.warn('Error parsing stream chunk:', error, 'Chunk:', jsonStr);
+                }
             }
         }
-        addMessageToChat({ role: 'model', parts: [{text: aiResponseText}], timestamp: Date.now() });
+        
+        if (aiMessage) {
+            if (currentApiType === 'gemini' && buffer.startsWith('data: ')) {
+                 try {
+                    const finalJson = JSON.parse(buffer.substring(6));
+                    if (finalJson.promptFeedback?.blockReason) {
+                         aiMessage.parts[0].text += `\n\n[请求被阻止: ${finalJson.promptFeedback.blockReason}]`;
+                         renderCurrentChat();
+                    }
+                 } catch(e) { /* Ignore if buffer is not valid JSON */ }
+            }
+            saveCurrentChat();
+        } else {
+            addMessageToChat({ role: 'model', parts: [{text: 'API返回了空的流式响应。请检查API服务商的状态或稍后再试。'}], timestamp: Date.now() });
+        }
 
     } catch (error) {
-        console.error(`Error calling ${currentApiType} API:`, error);
+        console.error(`Error calling or streaming from ${currentApiType} API:`, error);
         removeMessageByContentCheck(msg => msg.isThinking && msg.timestamp === thinkingMessage.timestamp);
-        addMessageToChat({ role: 'model', parts: [{text: `与API (${currentApiType}) 通讯时发生错误: ${error.message}`}], timestamp: Date.now() });
+        let friendlyError = `与API (${currentApiType}) 通讯时发生错误。`;
+        if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
+            friendlyError = '网络连接失败。请检查您的网络连接并重试。';
+        } else {
+            friendlyError += ` 详情: ${error.message}`;
+        }
+        addMessageToChat({ role: 'model', parts: [{text: friendlyError}], timestamp: Date.now() });
     }
 }
 
 
 function addMessageToChat(message) {
-    // Ensure message.parts is an array of objects with a text property
     if (!message.parts || !Array.isArray(message.parts) || message.parts.some(p => typeof p.text !== 'string')) {
-         // Attempt to fix common issues, like message.text directly
         if (typeof message.text === 'string') {
             message.parts = [{ text: message.text }];
-        } else if (message.parts && typeof message.parts.text === 'string') { // handle {parts: {text: "..."}}
+        } else if (message.parts && typeof message.parts.text === 'string') {
              message.parts = [{ text: message.parts.text }];
         }
         else {
@@ -830,21 +809,20 @@ function addMessageToChat(message) {
         }
     }
 
-
     if (message.isTempStatus && message.parts[0].text.includes("正在总结链接")) {
         removeMessageByContentCheck(msg => msg.isTempStatus && msg.parts[0].text.includes("正在总结链接"));
     }
      if (message.isTempStatus && message.parts[0].text.includes("正在加载并处理图片...")) {
-        removeMessageByContentCheck(msg => msg.isTempStatus && msg.parts[0].text.includes("正在加载并处理图片...")); // Prevent duplicates
+        removeMessageByContentCheck(msg => msg.isTempStatus && msg.parts[0].text.includes("正在加载并处理图片..."));
     }
 
     const messageWithTimestamp = { ...message, timestamp: message.timestamp || Date.now()};
     currentChat.push(messageWithTimestamp);
     renderCurrentChat();
     if (!message.isTempStatus && !message.isThinking) {
-      saveCurrentChat(); // Save non-transient messages
+      saveCurrentChat();
     }
-    return messageWithTimestamp; // Return the added message, useful for temp messages
+    return messageWithTimestamp;
 }
 
 
@@ -894,7 +872,6 @@ function renderCurrentChat() {
         const actionsContainer = document.createElement('div');
         actionsContainer.classList.add('message-actions');
 
-        // Always add copy button for non-transient messages
         if (!msg.isThinking && !msg.isTempStatus && textContent) {
             const copyElement = document.createElement('span');
             copyElement.classList.add('copy-action');
@@ -961,18 +938,15 @@ function clearSelectedTextPreview() {
 }
 
 function saveChatHistory() {
-    // Filter out transient messages from allChats before saving
     const cleanAllChats = allChats.map(chat =>
         chat.filter(msg => !msg.isTempStatus && !msg.isThinking)
-    ).filter(chat => chat.length > 0); // Also remove any chats that became empty
+    ).filter(chat => chat.length > 0);
     chrome.storage.local.set({ 'geminiChatHistory': cleanAllChats });
 }
 
 function saveCurrentChat() {
     const chatToStore = currentChat.filter(msg => !(msg.isThinking || msg.isTempStatus));
 
-    // Find if currentChat (identified by its first message's timestamp if it exists)
-    // already has a corresponding entry in allChats.
     let existingChatIndex = -1;
     if (chatToStore.length > 0 && allChats.length > 0) {
         const firstMessageTimestamp = chatToStore[0].timestamp;
@@ -983,32 +957,16 @@ function saveCurrentChat() {
 
     if (chatToStore.length > 0) {
         if (existingChatIndex !== -1) {
-            // Update existing history entry
             allChats[existingChatIndex] = [...chatToStore];
         } else {
-            // Add as a new history entry (typically at the beginning)
             allChats.unshift([...chatToStore]);
         }
-    } else { // currentChat is empty (e.g., after a split or clear)
-        if (existingChatIndex !== -1) {
-            // If the chat that became empty was in history, remove it or mark it as empty
-            // For simplicity, let's remove it if it became empty.
-            // However, splitChat handles this by starting a new currentChat and archiving the old one.
-            // This case might be if user deletes all messages from current chat manually (if such feature existed).
-            // For now, an empty currentChat just means the "active session" is empty.
-            // allChats[existingChatIndex] = []; // Or splice it out: allChats.splice(existingChatIndex, 1);
-            // Let's be conservative: if it's empty, it won't be added as new, and update logic for existing non-empty.
-        }
-        // We generally don't add a new *empty* chat to `allChats` unless `allChats` itself is empty.
     }
-
-
-    // Limit history size
+    
     if (allChats.length > 50) {
         allChats = allChats.slice(0, 50);
     }
-    saveChatHistory(); // Persists the potentially modified allChats
-    // renderChatHistoryList(); // No list to render directly
+    saveChatHistory();
 }
 
 
@@ -1018,21 +976,19 @@ async function loadChatHistory() {
             if (result.geminiChatHistory) {
                 allChats = result.geminiChatHistory.map(chat =>
                     chat.filter(msg => msg.parts && msg.parts.length > 0 && typeof msg.parts[0].text === 'string' && !msg.isTempStatus && !msg.isThinking)
-                ).filter(chat => chat.length > 0); // Remove empty chats and ensure structure
+                ).filter(chat => chat.length > 0);
             } else {
                 allChats = [];
             }
 
-            // If currentChat is empty (e.g., on sidebar open), load the latest from history
             if (currentChat.length === 0) {
                 if (allChats.length > 0) {
-                    currentChat = [...allChats[0]]; // Load a copy of the most recent chat
+                    currentChat = [...allChats[0]];
                 } else {
-                     currentChat = []; // Start with a truly empty chat if no history
+                     currentChat = [];
                 }
             }
             renderCurrentChat();
-            // renderChatHistoryList(); // No direct list rendering
             resolve();
         });
     });
@@ -1053,7 +1009,6 @@ async function loadArchivedChats() {
 }
 
 function saveArchivedChats() {
-    // Ensure archived chats are clean of transient properties before saving
     const cleanArchivedChats = archivedChats.map(chat =>
         chat.map(msg => {
             const {isThinking, isTempStatus, ...rest} = msg;
@@ -1065,11 +1020,11 @@ function saveArchivedChats() {
     });
 }
 
-function renderChatHistoryList() {
-    // This function is currently not used as the direct chat history list UI was removed.
-    // The "More history actions" button handles clearing history.
-    // If a history list UI is re-introduced, this function would populate it.
-    // console.log("renderChatHistoryList called, but no direct UI list to populate.");
-}
-
 document.addEventListener('DOMContentLoaded', initialize);
+
+document.addEventListener('click', function(event) {
+    if (event.target.tagName === 'A' && event.target.href && event.target.href.startsWith('http')) {
+        event.preventDefault();
+        chrome.tabs.create({ url: event.target.href });
+    }
+});
