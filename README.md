@@ -1,91 +1,129 @@
-# 智能侧边栏助手 (Smart Sidebar Assistant)
+# Smart Sidebar Assistant / 智能侧边栏助手
 
-[![版本](https://img.shields.io/badge/version-1.2.1-blue.svg)](./manifest.json)
-[![许可证](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![Version](https://img.shields.io/badge/version-1.3.0-blue.svg)](./manifest.json)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-**[English](./README.en.md)**
-
-**一款将强大的大型语言模型（LLM）能力无缝集成到您浏览器侧边栏的智能助手，旨在革新您的网页浏览、信息获取和内容创作体验。**
+[English](#english) | [中文](#chinese)
 
 ---
 
-## ✨ 核心功能
+<a name="english"></a>
+## 🇬🇧 English Introduction
 
-智能侧边栏助手不仅仅是一个简单的聊天窗口，它是一个集成了多种实用功能的高效工具集。
+**Smart Sidebar Assistant** seamlessly integrates powerful Large Language Model (LLM) capabilities into your browser sidebar, revolutionizing your web browsing, information retrieval, and content creation experience.
+
+### ✨ Key Features
+
+#### 1. Deep Interaction & AI Chat
+* **Streaming Response**: AI responses are displayed in real-time with a typewriter effect for fluid interaction.
+* **Continuous Conversation**: Engage in continuous chats with configured models (Gemini, GPT-4o, etc.) with context awareness.
+* **Multi-Model Support**: Easily switch between different AI models in the options page.
+* **Robust Error Handling**: Friendly error messages for invalid API keys, network issues, or quota limits.
+
+#### 2. Powerful Content Processing
+* **One-Click Summarization**: Instantly summarize the current webpage's core content using [Mozilla's Readability.js](https://github.com/mozilla/readability).
+* **Link Analysis**: Drag and drop links to the preview window (bottom right) or use the context menu to summarize linked content without opening new tabs.
+* **Image Analysis**: Analyze images on webpages using Gemini's multimodal capabilities via the context menu.
+* **Full Text Extraction**: Extract and quote the full text of a webpage for further questioning.
+
+#### 3. Efficient Workflow
+* **Prompt Templates**: Manage custom prompt templates. Use the `{{text}}` placeholder to automatically fill in selected text.
+* **Seamless Selection**: Select text on any webpage to automatically quote it in the sidebar for immediate processing.
+* **Chat Management**: Split conversations to archive current context and start fresh. Manage and view archived chats anytime.
+* **User Experience**: Auto-clearing of quoted text after prompt application, and auto-generated configuration names.
+
+#### 4. Customization & Internationalization
+* **I18n Support**: Switch between **English** and **Chinese** interfaces.
+* **Dark Mode**: Fully supports system-wide Dark Mode for comfortable night-time usage.
+* **Flexible API Config**: Support for Google Gemini and OpenAI-compatible APIs (custom endpoints allowed).
+* **Connection Testing**: Test your API configuration connectivity directly in the settings page.
+
+### 🚀 Installation
+
+1.  Clone or download this repository.
+2.  Open Chrome/Edge Extensions page (`chrome://extensions`).
+3.  Enable **Developer mode**.
+4.  Click **Load unpacked** and select the project directory.
+5.  Right-click the extension icon, select **Options**, and configure your API Key.
+
+---
+
+### 📝 Changelog
+
+#### v1.3.0 (Current)
+* **🌍 Internationalization**: Added full support for English and Chinese languages. Users can switch languages in the Options page.
+* **🌙 Dark Mode**: The interface now automatically adapts to the system's dark/light color scheme.
+* **🔌 Connection Test**: Added a "Test Connection" button in the API configuration page to verify settings before saving.
+* **✨ UX Improvements**:
+    * Automatically clear the quoted text preview after applying a prompt shortcut.
+    * Auto-generate a configuration name (timestamped) if left empty during setup.
+    * Preset prompts (Translate/Summarize) now adapt to the selected interface language.
+
+#### v1.2.1
+* Initial public release features (Page summary, Link Drag-and-Drop, Chat archiving).
+
+---
+
+<a name="chinese"></a>
+## 🇨🇳 中文介绍
+
+**智能侧边栏助手** 将强大的大型语言模型（LLM）能力无缝集成到您浏览器侧边栏，旨在革新您的网页浏览、信息获取和内容创作体验。
+
+### ✨ 核心功能
 
 #### 1. 深度交互 & AI 对话
-- **流式响应**: AI 的回答会以打字机的效果逐字或逐句显示，无需等待完整响应，交互更流畅、反馈更即时。
-- **流畅对话**: 与您配置的任何语言模型（如 Gemini、GPT 系列等）进行实时、连续的对话。
-- **上下文感知**: 对话能记忆之前的交互内容，实现更智能、更连贯的交流。
-- **多模型支持**: 在选项中轻松配置和切换不同的 AI 模型，满足不同场景的需求。
-- **智能错误提示**: 当 API Key 无效、网络中断或超出配额时，提供清晰、友好的错误提示，帮助用户快速定位问题。
+* **流式响应**: AI 的回答以打字机效果逐字显示，交互流畅。
+* **流畅对话**: 支持上下文记忆，与 Gemini、GPT 系列等模型进行连续对话。
+* **多模型支持**: 在选项中轻松配置和切换不同的 AI 模型。
+* **智能错误提示**: 清晰友好的错误提示，帮助快速定位网络或 Key 问题。
 
 #### 2. 强大的内容处理
-- **一键网页总结**: 点击按钮即可对当前页面的核心内容进行精准总结，快速掌握文章要点。底层采用 [Mozilla's Readability.js](https://github.com/mozilla/readability) 算法，智能区分正文与广告、导航等无关元素。
-- **链接深度解析**: 无需打开新标签，只需将链接拖拽至页面右下角的预览窗口，或通过右键菜单，即可提取并总结链接指向页面的内容。
-- **图片识别与分析**: 通过右键菜单，利用 Gemini 的多模态能力分析网页上的任何图片。
-- **网页全文引用**: 一键提取当前页面的全部文本内容，并将其作为引用添加到侧边栏，方便您基于全文进行提问或处理。
+* **一键网页总结**: 基于 [Mozilla's Readability.js](https://github.com/mozilla/readability) 算法，精准提取并总结网页核心内容。
+* **链接深度解析**: 拖拽链接至右下角预览窗口，或通过右键菜单，直接总结链接指向的内容。
+* **图片识别与分析**: 利用 Gemini 多模态能力分析网页图片。
+* **网页全文引用**: 一键提取全文作为引用，方便基于全文提问。
 
 #### 3. 高效工作流
-- **Prompt 模板与快捷方式**:
-    - **自定义模板**: 在专门的管理页面创建、编辑和保存您常用的 Prompt 模板。
-    - **`{{text}}` 占位符**: 在模板中使用 `{{text}}` 占位符，当选中网页文本时，模板会自动填充该文本，极大提升了重复操作的效率。
-    - **快捷调用**: 常用模板会作为快捷按钮显示在侧边栏，一触即发。
-- **无缝处理选中文本**: 在网页上选中文本，它会自动出现在侧边栏的引用区域。您可以直接就该段文本提问，或点击快捷方式应用 Prompt 模板。
-- **对话管理**:
-    - **分割对话**: 当话题切换时，可一键分割当前对话，将其存档并开启一个全新的会话。
-    - **对话存档**: 将重要的对话或单个问答对（Q&A）归档，方便日后查阅。
-    - **历史追溯**: 所有非临时对话都会被记录，并可在存档页面进行管理和检索。
+* **Prompt 模板**: 自定义快捷指令。支持 `{{text}}` 占位符，自动填充网页选中文本。
+* **无缝选文处理**: 网页选中文本自动进入侧边栏引用区域。
+* **对话管理**: 支持分割对话、对话存档与历史回溯。
+* **体验优化**: 应用快捷指令后自动清除引用文本，配置名称支持自动生成。
 
 #### 4. 高度可定制化
-- **灵活的 API 配置**: 支持添加多个 API 配置（Google Gemini 或任何 OpenAI 兼容的 API），并可随时将任意一个设为活动状态。
-- **模型自定义**: 您可以为每个 API 配置指定具体的模型名称（例如 `gemini-1.5-flash-latest`, `gpt-4o` 等）。
-- **OpenAI 兼容性**: 对于 OpenAI 兼容的 API，您可以自定义 API Endpoint，从而接入任何兼容该标准的服务。
+* **多语言支持**: 支持 **中文** 和 **英文** 界面切换。
+* **夜间模式**: 完美支持系统级深色模式 (Dark Mode)。
+* **灵活 API 配置**: 支持 Google Gemini 及任何 OpenAI 兼容接口（可自定义 Endpoint）。
+* **连接测试**: 配置页面新增“测试连接”功能，确保 API 设置正确。
 
-## 🚀 安装与配置
+### 🚀 安装与配置
 
-#### 方法一：从 Chrome 网上商店安装 (推荐)
-
-[**👉 点击此处从 Chrome Web Store 安装**](https://chromewebstore.google.com/detail/%E6%99%BA%E8%83%BD%E4%BE%A7%E8%BE%B9%E6%A0%8F%E5%8A%A9%E6%89%8B/eomfjfhjglppmkefbnhfmmdfciemlfie)
-
-安装后，请直接跳转到 **步骤 2** 配置 API 密钥。
+1.  下载或克隆本项目。
+2.  打开浏览器扩展管理页面 (`chrome://extensions`)。
+3.  开启 **“开发者模式”**。
+4.  点击 **“加载已解压的扩展程序”**，选择项目文件夹。
+5.  右键点击扩展图标，选择 **“选项”** 配置 API Key。
 
 ---
-#### 方法二：从源码加载 (开发者)
 
-##### 步骤 1: 加载扩展
-1.  下载或克隆本项目的所有文件到本地。
-2.  打开 Chrome / Edge 浏览器的扩展管理页面 (`chrome://extensions` 或 `edge://extensions`)。
-3.  开启页面右上角的 **“开发者模式”**。
-4.  点击“加载已解压的扩展程序”，然后选择您下载的项目文件夹。
+### 📝 更新日志 (Changelog)
 
-##### 步骤 2: 配置 API
-1.  扩展安装后，在浏览器工具栏右键点击“智能侧边栏助手”的图标，选择“选项”。
-2.  在打开的配置页面中，点击“添加/编辑配置”。
-3.  填写以下信息：
-    - **配置名称**: 给您的配置起一个易于识别的名字 (例如: "我的 Gemini Key")。
-    - **API 密钥**: 粘贴您从 AI 服务提供商获取的 API Key。
-    - **API 类型**: 选择 "Google Gemini" 或 "OpenAI 兼容 API"。
-    - **API Endpoint URL**: (仅当类型为 OpenAI 兼容时需要) 填写服务的 Endpoint 地址。
-    - **模型名称**: 填写您想使用的具体模型 ID。
-4.  保存配置。**请确保至少有一个配置，并已被设为“活动”状态**，否则扩展将无法工作。
+#### v1.3.0 (当前版本)
+* **🌍 国际化支持**: 全面支持中英文界面切换，可在选项页进行设置。
+* **🌙 夜间模式**: 侧边栏界面现在会根据系统的深色/浅色模式自动调整配色。
+* **🔌 连接测试**: 选项页面新增“测试连接”按钮，方便用户在保存前验证 API 配置是否通畅。
+* **✨ 体验优化**:
+    * 点击 Prompt 快捷方式并应用后，自动清除下方的引用文本，防止重复发送。
+    * 添加配置时，如果未填写名称，系统将自动生成一个带时间戳的默认名称。
+    * 预设的 Prompt（翻译/总结）现在会跟随界面语言自动切换。
 
-## 🛠️ 如何使用
-- **打开侧边栏**: 点击浏览器工具栏的扩展图标。
-- **总结/分析**: 在网页任意位置点击右键，使用上下文菜单中的“总结”或“分析图片”等功能。
-- **处理文本**: 在网页上用鼠标选中一段文字，它会自动出现在侧边栏中待处理。
-- **总结链接**: 从网页上拖动一个链接到页面右下角弹出的预览框，然后点击总结。
+#### v1.2.1
+* 基础功能发布（网页总结、链接拖拽预览、对话存档等）。
 
-## 🔧 技术栈
-- **核心**: HTML, CSS, JavaScript (ES6+)
-- **浏览器 API**: Chrome Extension Manifest V3, Side Panel API, Context Menus API, Storage API
-- **内容提取**: [Mozilla/Readability.js](https://github.com/mozilla/readability)
-- **Markdown 渲染**: [Marked.js](https://marked.js.org/)
+---
 
-## 展望未来
-- **功能增强**:
-    - 优化对话历史的管理和搜索功能。
-    - 根据用户反馈，探索更多实用的 AI 应用场景。
-
-## 🤝 贡献与反馈
-欢迎您通过提交 Issues 或 Pull Requests 来为本项目做出贡献。如果您有任何问题或建议，请随时提出！
+## 🔧 技术栈 / Tech Stack
+* HTML, CSS, JavaScript (ES6+)
+* Chrome Extension Manifest V3
+* Side Panel API, Context Menus API, Storage API
+* [Mozilla/Readability.js](https://github.com/mozilla/readability)
+* [Marked.js](https://marked.js.org/)

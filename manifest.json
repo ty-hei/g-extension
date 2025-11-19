@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "智能侧边栏助手",
-  "version": "1.2.1",
+  "version": "1.3.0",
   "description": "使用各类API总结网页、进行智能对话",
   "permissions": [
     "activeTab",
