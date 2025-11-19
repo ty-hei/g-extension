@@ -4,7 +4,7 @@
 let currentApiKey = null;
 let currentApiType = 'gemini'; // Default to Gemini
 let currentApiEndpoint = ''; // For OpenAI-compatible APIs
-let currentModelName = 'gemini-1.5-flash-latest'; // Default model
+let currentModelName = 'gemini-2.0-flash'; // Default model
 let currentLanguage = 'zh'; // Default language
 
 let currentChat = [];
@@ -70,7 +70,9 @@ const translations = {
         viewArchivedBtnCount: "查看已存档对话",
         prompt_summarize_link: `请使用中文，清晰、简洁且全面地总结以下链接 ({title}{url}) 的主要内容。专注于核心信息，忽略广告、导航栏、页脚等非主要内容。如果内容包含技术信息或代码，请解释其核心概念和用途。如果是一篇文章，请提炼主要观点和论据。总结应易于理解，并抓住内容的精髓。\n\n链接内容文本如下：\n"{text}"`,
         prompt_summarize_page: `请使用中文，清晰、简洁且全面地总结以下网页内容。如果内容包含技术信息或代码，请解释其核心概念和用途。如果是一篇文章，请提炼主要观点和论据。总结应易于理解，并抓住内容的精髓。\n\n网页内容如下：\n"{text}"`,
-        user_msg_about_quote: `关于以下引用内容：\n"{quote}"\n\n我的问题/指令是：\n"{msg}"`
+        user_msg_about_quote: `关于以下引用内容：\n"{quote}"\n\n我的问题/指令是：\n"{msg}"`,
+        moreActions: "更多操作",
+        sendShortcut: "Cmd+Enter 发送" // New translation
     },
     en: {
         summarizePage: "Summarize Page",
@@ -126,7 +128,9 @@ const translations = {
         viewArchivedBtnCount: "Archived Chats",
         prompt_summarize_link: `Please summarize the main content of the following link ({title}{url}) clearly, concisely, and comprehensively in English. Focus on core information, ignoring ads and nav bars. If technical, explain core concepts. If an article, extract main arguments. Make it easy to understand.\n\nLink text:\n"{text}"`,
         prompt_summarize_page: `Please summarize the following webpage content clearly, concisely, and comprehensively in English. Focus on core information. If technical, explain core concepts. If an article, extract main arguments. Make it easy to understand.\n\nPage content:\n"{text}"`,
-        user_msg_about_quote: `Regarding the following quote:\n"{quote}"\n\nMy question/instruction is:\n"{msg}"`
+        user_msg_about_quote: `Regarding the following quote:\n"{quote}"\n\nMy question/instruction is:\n"{msg}"`,
+        moreActions: "More Actions",
+        sendShortcut: "Cmd+Enter to Send" // New translation
     }
 };
 
@@ -141,7 +145,8 @@ let chatOutput, chatInput, sendMessageButton, summarizePageButton, extractConten
     selectedImagePreviewContainer, clearSelectedImageButton,
     clearAllHistoryButton,
     splitChatButton, viewArchivedChatsButton,
-    managePromptsButton, promptShortcutsContainer;
+    managePromptsButton, promptShortcutsContainer,
+    toggleMoreActionsButton, moreActionsMenu; // Added variables for toggle
 
 
 // --- 初始化和API Key加载 ---
@@ -161,11 +166,16 @@ async function initialize() {
     viewArchivedChatsButton = document.getElementById('viewArchivedChatsButton');
     managePromptsButton = document.getElementById('managePromptsButton');
     promptShortcutsContainer = document.getElementById('promptShortcuts');
+    toggleMoreActionsButton = document.getElementById('toggleMoreActionsButton');
+    moreActionsMenu = document.getElementById('moreActionsMenu');
 
 
     if (typeof marked !== 'object' || marked === null || typeof marked.parse !== 'function') {
         console.warn("Marked Library Test - marked is not an object or marked.parse is not a function.");
     }
+
+    // Explicitly hide the image clear button on init to ensure no empty space or ghost button
+    clearSelectedImagePreview();
 
     // Load Configuration and Language
     try {
@@ -260,6 +270,19 @@ async function initialize() {
         });
     }
 
+    // New Toggle Logic
+    if (toggleMoreActionsButton && moreActionsMenu) {
+        toggleMoreActionsButton.addEventListener('click', () => {
+            if (moreActionsMenu.style.display === 'none') {
+                moreActionsMenu.style.display = 'flex';
+                toggleMoreActionsButton.classList.add('active');
+            } else {
+                moreActionsMenu.style.display = 'none';
+                toggleMoreActionsButton.classList.remove('active');
+            }
+        });
+    }
+
     chrome.storage.onChanged.addListener(async (changes, namespace) => {
         if (namespace === 'sync') {
              if (changes.interfaceLanguage) {
@@ -339,6 +362,7 @@ function updateInterfaceLanguage() {
     });
     
     if (chatInput) chatInput.placeholder = t('inputPlaceholder');
+    if (toggleMoreActionsButton) toggleMoreActionsButton.title = t('moreActions');
     updateArchivedChatsButtonCount();
 }
 

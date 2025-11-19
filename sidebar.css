@@ -120,18 +120,25 @@ body {
   gap: 12px; /* Spacing between main sections */
 }
 
-.controls {
+/* CONTROLS LAYOUT MODIFIED */
+.controls-primary {
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid var(--border-color);
 }
 
-.controls button {
+.controls-secondary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px dashed var(--border-color);
+}
+
+.controls-primary button, .controls-secondary button {
   padding: 6px 10px;
   flex-grow: 1;
-  min-width: 120px;
   border: none;
   background-color: var(--control-button-bg);
   color: var(--control-button-text);
@@ -142,9 +149,22 @@ body {
   text-align: center;
 }
 
-.controls button:hover {
+.controls-primary button:hover, .controls-secondary button:hover {
   background-color: var(--control-button-hover-bg);
 }
+
+/* Specific style for the toggle button (gear icon) */
+button#toggleMoreActionsButton {
+  flex-grow: 0;
+  width: 32px; /* Fixed width for icon */
+  min-width: unset;
+  padding: 6px 0;
+}
+button#toggleMoreActionsButton.active {
+  background-color: var(--primary-button-bg);
+  color: var(--primary-button-text);
+}
+
 
 /* MODIFIED STYLES FOR PROMPT SHORTCUTS - START */
 .prompt-shortcuts-container {
@@ -359,7 +379,7 @@ body {
 .send-area-container {
     display: flex;
     gap: 8px;
-    align-items: stretch; /* Make buttons same height */
+    align-items: center; /* Align items vertically centered */
 }
 
 #sendMessageButton {
@@ -380,6 +400,13 @@ body {
   background-color: var(--secondary-text-color);
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+.shortcut-hint {
+  font-size: 0.85em;
+  color: var(--light-text-color);
+  white-space: nowrap;
+  user-select: none;
 }
 
 #clearAllHistoryButton {
