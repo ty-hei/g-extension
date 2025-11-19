@@ -1,5 +1,6 @@
-/* sidebar.css - Beautified Version (AI messages full width) */
+/* sidebar.css - Beautified Version (AI messages full width) with Dark Mode Support */
 :root {
+  /* --- Color Palette Variables (Light Mode Default) --- */
   --sidebar-bg-color: #f8f9fa;
   --primary-text-color: #212529;
   --secondary-text-color: #495057;
@@ -25,10 +26,76 @@
   --control-button-hover-bg: #5a6268;
   --control-button-text: #ffffff;
 
+  /* New semantic variables for components */
+  --chat-bg-color: #ffffff;
+  --input-bg-color: #ffffff;
+  --code-block-bg: #e9ecef;
+  --inline-code-bg: rgba(0,0,0,0.04);
+  
+  --prompt-shortcut-bg: #e9ecef;
+  --prompt-shortcut-border: #ced4da;
+  --prompt-shortcut-hover-bg: #d1d9e0;
+  --prompt-shortcut-hover-border: #adb5bd;
+
+  --preview-bg-color: #fff3cd;
+  --preview-text-color: #856404;
+  --preview-border-color: #ffeeba;
+  
+  --archived-text-color: #28a745;
+  --link-color: #007bff;
+
   --font-family-sans-serif: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
   --border-radius: 6px;
   --input-focus-border: #80bdff;
   --input-focus-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+/* --- Dark Mode Overrides --- */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --sidebar-bg-color: #212529;
+    --primary-text-color: #f8f9fa;
+    --secondary-text-color: #ced4da;
+    --light-text-color: #adb5bd;
+    --border-color: #495057;
+    --hover-bg-color: #343a40;
+    --active-bg-color: #495057;
+
+    --user-message-bg: #0f3d6e; /* Darker blue */
+    --user-message-text: #d0e3ff;
+    --ai-message-bg: #343a40; /* Dark grey */
+    --ai-message-text: #e9ecef;
+
+    --primary-button-bg: #0d6efd;
+    --primary-button-hover-bg: #0b5ed7;
+    /* primary-button-text stays white */
+
+    /* destructive buttons stay mostly same or slightly darker red if needed */
+    
+    --control-button-bg: #495057;
+    --control-button-hover-bg: #343a40;
+    --control-button-text: #e9ecef;
+
+    --chat-bg-color: #2b3035;
+    --input-bg-color: #2b3035;
+    --code-block-bg: #1a1d20;
+    --inline-code-bg: rgba(255,255,255,0.1);
+
+    --prompt-shortcut-bg: #343a40;
+    --prompt-shortcut-border: #495057;
+    --prompt-shortcut-hover-bg: #495057;
+    --prompt-shortcut-hover-border: #6c757d;
+
+    --preview-bg-color: #463c14; /* Dark yellow/brown */
+    --preview-text-color: #ffdf7e;
+    --preview-border-color: #66561c;
+
+    --archived-text-color: #75b798; /* Light green */
+    --link-color: #6ea8fe;
+    
+    --input-focus-border: #375a7f;
+    --input-focus-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+  }
 }
 
 body {
@@ -102,9 +169,9 @@ body {
 
 .prompt-shortcut-button {
   padding: 4px 8px; /* Reduced from 6px 10px */
-  background-color: #e9ecef;
+  background-color: var(--prompt-shortcut-bg);
   color: var(--primary-text-color);
-  border: 1px solid #ced4da;
+  border: 1px solid var(--prompt-shortcut-border);
   border-radius: var(--border-radius);
   cursor: pointer;
   font-size: 0.85em;
@@ -112,8 +179,8 @@ body {
 }
 
 .prompt-shortcut-button:hover {
-  background-color: #d1d9e0;
-  border-color: #adb5bd;
+  background-color: var(--prompt-shortcut-hover-bg);
+  border-color: var(--prompt-shortcut-hover-border);
 }
 /* MODIFIED STYLES FOR PROMPT SHORTCUTS - END */
 
@@ -131,7 +198,7 @@ body {
   padding: 8px;
   border: 1px solid var(--border-color);
   border-radius: var(--border-radius);
-  background-color: #ffffff;
+  background-color: var(--chat-bg-color);
   min-height: 150px; /* Ensure it has some height */
 }
 
@@ -163,14 +230,15 @@ body {
   margin-bottom: 0;
 }
 .message-content-wrapper pre {
-  background-color: #e9ecef;
+  background-color: var(--code-block-bg);
   padding: 10px;
   border-radius: var(--border-radius);
   overflow-x: auto;
   font-size: 0.9em;
+  color: var(--primary-text-color);
 }
 .message-content-wrapper code {
-  background-color: rgba(0,0,0,0.04);
+  background-color: var(--inline-code-bg);
   padding: 0.2em 0.4em;
   margin: 0;
   font-size: 85%;
@@ -182,6 +250,7 @@ body {
   margin: 0;
   font-size: inherit;
   border-radius: 0;
+  color: inherit;
 }
 
 
@@ -230,17 +299,17 @@ body {
 }
 
 .archived-text {
-  color: #28a745;
+  color: var(--archived-text-color);
   font-style: italic;
   cursor: default;
 }
 
 #selectedTextPreview {
   font-size: 0.9em;
-  background-color: #fff3cd;
-  color: #856404;
+  background-color: var(--preview-bg-color);
+  color: var(--preview-text-color);
   padding: 8px 12px;
-  border: 1px solid #ffeeba;
+  border: 1px solid var(--preview-border-color);
   border-radius: var(--border-radius);
   display: flex;
   justify-content: space-between;
@@ -256,14 +325,14 @@ body {
 #clearSelectedTextButton {
   background: none;
   border: none;
-  color: #856404;
+  color: var(--preview-text-color);
   font-size: 1em;
   padding: 2px 5px;
   cursor: pointer;
   border-radius: 3px;
 }
 #clearSelectedTextButton:hover {
-  background-color: rgba(0,0,0,0.05);
+  background-color: rgba(0,0,0,0.1);
 }
 
 #chatInput {
@@ -271,6 +340,8 @@ body {
   min-height: 70px;
   padding: 10px;
   border: 1px solid var(--border-color);
+  background-color: var(--input-bg-color);
+  color: var(--primary-text-color);
   border-radius: var(--border-radius);
   box-sizing: border-box;
   font-family: inherit;
@@ -306,7 +377,8 @@ body {
   background-color: var(--primary-button-hover-bg);
 }
 #sendMessageButton:disabled {
-  background-color: #ced4da;
+  background-color: var(--secondary-text-color);
+  opacity: 0.6;
   cursor: not-allowed;
 }
 
@@ -371,7 +443,7 @@ body {
   font-style: italic;
 }
 .message-content-wrapper a {
-    color: var(--primary-button-bg);
+    color: var(--link-color);
     text-decoration: none;
 }
 .message-content-wrapper a:hover {
