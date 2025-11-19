@@ -1,28 +1,65 @@
 // g-extension/background.js
 let geminiApiKey = null;
+let currentLanguage = 'zh';
 
-async function loadApiKey() {
+const translations = {
+  zh: {
+    analyzeImage: "用 Gemini 分析图片",
+    errorActiveTab: "无法确定活动标签页。",
+    errorCSComm: "获取页面内容失败 (CS通讯错误): ",
+    errorContentInvalid: "未能从页面获取内容 (CS数据无效或格式错误)。",
+    errorScriptFail: "无法在此类特殊页面上运行脚本。",
+    errorInjectFail: "无法注入提取脚本: ",
+    linkProcessing: "正在处理链接总结...",
+    errorOpenLink: "无法打开链接: ",
+    errorExtractFail: "无法提取内容 (注入失败): ",
+    errorTimeout: "页面加载超时，无法提取内容。"
+  },
+  en: {
+    analyzeImage: "Analyze image with Gemini",
+    errorActiveTab: "Cannot determine active tab.",
+    errorCSComm: "Failed to get page content (CS Comm Error): ",
+    errorContentInvalid: "Failed to get content (Invalid Data).",
+    errorScriptFail: "Cannot run script on this special page.",
+    errorInjectFail: "Failed to inject script: ",
+    linkProcessing: "Processing link summary...",
+    errorOpenLink: "Cannot open link: ",
+    errorExtractFail: "Extraction failed (Injection Error): ",
+    errorTimeout: "Page load timeout, extraction failed."
+  }
+};
+
+function t(key) {
+  return translations[currentLanguage][key] || translations['zh'][key] || key;
+}
+
+async function loadSettings() {
   try {
-    const result = await chrome.storage.sync.get(['geminiApiKey']);
+    const result = await chrome.storage.sync.get(['geminiApiKey', 'interfaceLanguage']);
     if (result.geminiApiKey) {
       geminiApiKey = result.geminiApiKey;
-      // console.log("Background: Gemini API Key loaded.");
-    } else {
-      console.warn("Background: Gemini API Key not found in storage.");
     }
+    if (result.interfaceLanguage) {
+      currentLanguage = result.interfaceLanguage;
+    }
+    updateContextMenu();
   } catch (e) {
-    console.error("Background: Error loading API Key:", e);
+    console.error("Background: Error loading settings:", e);
   }
 }
 
-// Create context menu item
-chrome.runtime.onInstalled.addListener(() => {
-  chrome.contextMenus.create({
-    id: "analyzeImageWithGemini",
-    title: "用 Gemini 分析图片",
-    contexts: ["image"]
+function updateContextMenu() {
+  chrome.contextMenus.removeAll(() => {
+    chrome.contextMenus.create({
+      id: "analyzeImageWithGemini",
+      title: t('analyzeImage'),
+      contexts: ["image"]
+    });
   });
-  console.log("Background: Context menu for image analysis created.");
+}
+
+chrome.runtime.onInstalled.addListener(() => {
+  loadSettings();
 });
 
 // Listener for context menu clicks
@@ -33,9 +70,7 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
       imageUrl: info.srcUrl
     }, response => {
       if (chrome.runtime.lastError) {
-        console.log("Background: Error sending image to sidebar, perhaps sidebar is not open or responding.", chrome.runtime.lastError.message);
-      } else {
-        // console.log("Background: Image URL sent to sidebar.", response);
+        console.log("Background: Sidebar not open?", chrome.runtime.lastError.message);
       }
     });
   }
@@ -43,7 +78,7 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
 
 
 (async () => {
-  await loadApiKey();
+  await loadSettings();
   try {
     await chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
   } catch (error) {
@@ -52,9 +87,14 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
 })();
 
 chrome.storage.onChanged.addListener((changes, namespace) => {
-  if (namespace === 'sync' && changes.geminiApiKey) {
-    geminiApiKey = changes.geminiApiKey.newValue;
-    // console.log("Background: Gemini API Key updated.");
+  if (namespace === 'sync') {
+    if (changes.geminiApiKey) {
+      geminiApiKey = changes.geminiApiKey.newValue;
+    }
+    if (changes.interfaceLanguage) {
+      currentLanguage = changes.interfaceLanguage.newValue || 'zh';
+      updateContextMenu();
+    }
   }
 });
 
@@ -62,19 +102,19 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "getAndSummarizePage") {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       if (!tabs || tabs.length === 0 || !tabs[0].id) {
-        sendResponse({ error: "无法确定活动标签页。" });
+        sendResponse({ error: t('errorActiveTab') });
         return;
       }
       const activeTabId = tabs[0].id;
       chrome.tabs.sendMessage(activeTabId, { action: "getPageContentForSummarize" }, (pageResponse) => {
         if (chrome.runtime.lastError) {
-          sendResponse({ error: "获取页面内容失败 (CS通讯错误): " + chrome.runtime.lastError.message });
+          sendResponse({ error: t('errorCSComm') + chrome.runtime.lastError.message });
           return;
         }
         if (pageResponse && typeof pageResponse.contentForSummary === 'string') {
           sendResponse({ contentForSummary: pageResponse.contentForSummary });
         } else {
-          sendResponse({ error: "未能从页面获取内容 (CS数据无效或格式错误)。" });
+          sendResponse({ error: t('errorContentInvalid') });
         }
       });
     });
@@ -82,19 +122,18 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   } else if (request.action === "extractActiveTabContent") {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
         if (!tabs || tabs.length === 0 || !tabs[0].id) {
-            sendResponse({ success: false, error: "无法确定活动标签页。" });
+            sendResponse({ success: false, error: t('errorActiveTab') });
             return;
         }
         const activeTabId = tabs[0].id;
         const tabUrl = tabs[0].url;
 
-        // 检查是否为不支持的页面 (如 Chrome 网上商店, about:blank 等)
         if (tabUrl.startsWith('chrome://') || tabUrl.startsWith('about:') || tabUrl.startsWith('https://chrome.google.com/webstore')) {
-           sendResponse({ success: false, error: "无法在此类特殊页面上运行脚本。" });
-           // 同时直接通知侧边栏
+           const errMsg = t('errorScriptFail');
+           sendResponse({ success: false, error: errMsg });
            chrome.runtime.sendMessage({
               type: "EXTRACT_CONTENT_ERROR",
-              message: "无法在此类特殊页面上运行脚本。"
+              message: errMsg
            });
            return;
         }
@@ -104,37 +143,33 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             files: ["libs/Readability.js", "page_content_extractor.js"]
         }, (injectionResults) => {
             if (chrome.runtime.lastError) {
-                console.error("Background: 注入提取脚本时出错:", chrome.runtime.lastError.message);
-                sendResponse({ success: false, error: "无法注入提取脚本: " + chrome.runtime.lastError.message });
-                // 同时通知侧边栏
+                const errMsg = t('errorInjectFail') + chrome.runtime.lastError.message;
+                sendResponse({ success: false, error: errMsg });
                 chrome.runtime.sendMessage({
                     type: "EXTRACT_CONTENT_ERROR",
-                    message: "无法注入提取脚本: " + chrome.runtime.lastError.message
+                    message: errMsg
                 });
             } else {
-                // 脚本将自行发送消息，因此这里只需确认注入已开始。
                 sendResponse({ success: true });
             }
         });
     });
-    return true; // 异步
+    return true; 
   } else if (request.action === "TEXT_SELECTED_FROM_PAGE") {
-    // Forward message to sidebar (if open)
     chrome.runtime.sendMessage({ type: "TEXT_SELECTED_FOR_SIDEBAR", text: request.text });
-    sendResponse({ status: "Text selected event forwarded" }); // Removed "to sidebar" as it's a general broadcast
+    sendResponse({ status: "Text selected event forwarded" }); 
     return true;
   } else if (request.action === "summarizeLinkTarget") {
     const linkUrl = request.url;
-    const linkText = request.linkText || linkUrl; // Use link text if provided
-    // console.log("Background: Received summarizeLinkTarget for:", linkUrl, "Link Text:", linkText);
-    sendResponse({ status: "Processing link summarization..." });
+    const linkText = request.linkText || linkUrl; 
+    sendResponse({ status: t('linkProcessing') });
 
     chrome.runtime.sendMessage({ type: "LINK_SUMMARIZATION_STARTED", url: linkUrl, title: linkText });
 
     chrome.tabs.create({ url: linkUrl, active: false }, (newTab) => {
       if (chrome.runtime.lastError || !newTab || !newTab.id) {
-        console.error("Background: Error creating new tab:", chrome.runtime.lastError?.message);
-        chrome.runtime.sendMessage({ type: "SHOW_LINK_SUMMARY_ERROR", message: "无法打开链接: " + (chrome.runtime.lastError?.message || "Unknown error"), url: linkUrl, title: linkText });
+        const errMsg = t('errorOpenLink') + (chrome.runtime.lastError?.message || "Unknown error");
+        chrome.runtime.sendMessage({ type: "SHOW_LINK_SUMMARY_ERROR", message: errMsg, url: linkUrl, title: linkText });
         return;
       }
       const tempTabId = newTab.id;
@@ -142,36 +177,30 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       function tabUpdateListener(tabId, changeInfo, tab) {
         if (tabId === tempTabId && changeInfo.status === 'complete') {
           chrome.tabs.onUpdated.removeListener(tabUpdateListener);
-          // console.log("Background: Temporary tab loaded:", linkUrl);
           chrome.scripting.executeScript({
             target: { tabId: tempTabId },
             files: ["libs/Readability.js", "link_content_extractor.js"]
           }, (injectionResults) => {
             if (chrome.runtime.lastError) {
-              console.error("Background: Error injecting scripts:", chrome.runtime.lastError.message);
-              chrome.runtime.sendMessage({ type: "SHOW_LINK_SUMMARY_ERROR", message: "无法提取内容 (注入失败): " + chrome.runtime.lastError.message, url: linkUrl, title: linkText });
-              chrome.tabs.remove(tempTabId).catch(e => console.warn("BG: Failed to remove temp tab post-injection-error", e));
+              const errMsg = t('errorExtractFail') + chrome.runtime.lastError.message;
+              chrome.runtime.sendMessage({ type: "SHOW_LINK_SUMMARY_ERROR", message: errMsg, url: linkUrl, title: linkText });
+              chrome.tabs.remove(tempTabId).catch(e => console.warn("BG: Failed to remove temp tab", e));
             }
-            // link_content_extractor.js will send "extractedLinkContent"
           });
         }
       }
       chrome.tabs.onUpdated.addListener(tabUpdateListener);
-      // Timeout for tab loading, in case 'complete' never fires for some pages
       setTimeout(() => {
         chrome.tabs.get(tempTabId, (tabDetails) => {
-          if (tabDetails && tabDetails.status && !tabDetails.status.includes('complete')) { // If tab still exists and isn't complete
+          if (tabDetails && tabDetails.status && !tabDetails.status.includes('complete')) { 
             chrome.tabs.onUpdated.removeListener(tabUpdateListener);
-            console.warn(`Background: Timeout waiting for tab ${tempTabId} to load complete for ${linkUrl}. Attempting injection anyway or closing.`);
-            chrome.runtime.sendMessage({ type: "SHOW_LINK_SUMMARY_ERROR", message: "页面加载超时，无法提取内容。", url: linkUrl, title: linkText });
-            chrome.tabs.remove(tempTabId).catch(e => console.warn("BG: Failed to remove temp tab post-timeout", e));
-          } else if (!tabDetails) { // Tab was closed or crashed before timeout
+            chrome.runtime.sendMessage({ type: "SHOW_LINK_SUMMARY_ERROR", message: t('errorTimeout'), url: linkUrl, title: linkText });
+            chrome.tabs.remove(tempTabId).catch(e => console.warn("BG: Failed to remove temp tab", e));
+          } else if (!tabDetails) { 
             chrome.tabs.onUpdated.removeListener(tabUpdateListener);
-            console.warn(`Background: Tab ${tempTabId} for ${linkUrl} was closed or crashed before loading.`);
-            // Error message might have already been sent by other handlers if it was a crash.
           }
         });
-      }, 20000); // 20 seconds timeout
+      }, 20000); 
     });
     return true;
   } else if (request.action === "extractedLinkContent") {
@@ -189,7 +218,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         type: "SUMMARIZE_EXTERNAL_TEXT_FOR_SIDEBAR",
         text: content,
         linkUrl: originalUrlFromExtractor,
-        linkTitle: extractedTitle, // Use title from Readability
+        linkTitle: extractedTitle, 
         warning: warning
       });
     }
@@ -197,7 +226,5 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return true;
   }
 
-  return false; // Return false for synchronous onMessage listeners or if not handled.
+  return false; 
 });
-
-console.log("Background script (gemini-sidebar with sidePanel) started.");

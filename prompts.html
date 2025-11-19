@@ -1,41 +1,41 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>管理 Prompt 模板</title>
+  <title data-i18n="promptsTitle">管理 Prompt 模板</title>
   <meta charset="utf-8">
   <link rel="stylesheet" href="prompts.css">
 </head>
 <body>
   <div class="container">
-    <h1>管理 Prompt 模板</h1>
+    <h1 data-i18n="promptsTitle">管理 Prompt 模板</h1>
     <div class="controls-header">
-      <button id="backToSidebarButton">返回侧边栏</button>
+      <button id="backToSidebarButton" data-i18n="backToSidebar">返回侧边栏</button>
     </div>
 
     <div id="promptList" class="prompt-list">
       </div>
 
-    <h2>添加/编辑模板</h2>
+    <h2 data-i18n="addEditTitle">添加/编辑模板</h2>
     <div class="form-container">
       <input type="hidden" id="promptId">
       <div>
-        <label for="promptName">模板名称:</label>
+        <label for="promptName" data-i18n="promptNameLabel">模板名称:</label>
         <input type="text" id="promptName" placeholder="例如：翻译成英文">
       </div>
       <div>
-        <label for="promptContent">模板内容 (使用 <code>{{text}}</code> 作为选中文本的占位符):</label>
+        <label for="promptContent" data-i18n="promptContentLabel">模板内容 (使用 <code>{{text}}</code> 作为选中文本的占位符):</label>
         <textarea id="promptContent" rows="5" placeholder="例如：请将以下文本翻译成英文：\n\n{{text}}"></textarea>
       </div>
       <div class="form-actions">
-        <button id="savePromptButton">保存模板</button>
-        <button id="clearFormButton" type="button">清空表单</button>
+        <button id="savePromptButton" data-i18n="savePrompt">保存模板</button>
+        <button id="clearFormButton" type="button" data-i18n="clearForm">清空表单</button>
       </div>
     </div>
     <p class="usage-note">
-      <strong>使用说明:</strong> 在模板内容中使用 <code>{{text}}</code> 作为占位符。当您在侧边栏点击模板快捷方式时：
+      <strong data-i18n="usageNoteTitle">使用说明:</strong> <span data-i18n="usageNoteText">在模板内容中使用 <code>{{text}}</code> 作为占位符。当您在侧边栏点击模板快捷方式时：</span>
       <ul>
-        <li>如果当前有选中的网页文本，<code>{{text}}</code> 将被替换为该文本。</li>
-        <li>如果没有选中的文本，<code>{{text}}</code> 将被原样保留或根据您的输入进行处理。</li>
+        <li data-i18n="usageNoteList1">如果当前有选中的网页文本，<code>{{text}}</code> 将被替换为该文本。</li>
+        <li data-i18n="usageNoteList2">如果没有选中的文本，<code>{{text}}</code> 将被原样保留或根据您的输入进行处理。</li>
       </ul>
     </p>
   </div>

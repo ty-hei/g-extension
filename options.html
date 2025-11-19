@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>智能侧边栏API设置</title>
+  <title data-i18n="optionsTitle">智能侧边栏API设置</title>
   <meta charset="utf-8">
   <style>
     body { font-family: sans-serif; padding: 20px; max-width: 700px; margin: auto; font-size: 14px; }
@@ -22,6 +22,10 @@
     button.edit-btn:hover { background-color: #e0a800; }
     button.set-active-btn { background-color: #28a745; }
     button.set-active-btn:hover { background-color: #218838; }
+    /* Style for Test Button */
+    button#testConfigButton { background-color: #17a2b8; }
+    button#testConfigButton:hover { background-color: #138496; }
+
     #status { margin-top: 15px; font-weight: bold; text-align: center; }
     .config-form, .config-list { margin-top: 20px; padding: 15px; border: 1px solid #eee; border-radius: 5px; background-color: #f9f9f9; }
     .config-item {
@@ -34,46 +38,61 @@
     .is-active { font-weight: bold; color: #28a745; }
     .form-group { margin-bottom: 10px; }
     .hidden { display: none; }
+    .general-settings { margin-bottom: 20px; padding: 15px; border: 1px solid #eee; border-radius: 5px; background-color: #f0f8ff; }
   </style>
 </head>
 <body>
-  <h1>API 配置管理</h1>
+  <h1 data-i18n="optionsTitle">API 配置管理</h1>
+
+  <div class="general-settings">
+    <h2 data-i18n="generalSettingsTitle">通用设置</h2>
+    <div class="form-group">
+      <label for="languageSelect" data-i18n="languageLabel">界面语言 / Interface Language:</label>
+      <select id="languageSelect">
+        <option value="zh">中文 (Chinese)</option>
+        <option value="en">English</option>
+      </select>
+    </div>
+    <button id="saveGeneralSettingsButton" data-i18n="saveGeneralSettings">保存通用设置</button>
+  </div>
 
   <div class="config-form" id="configFormContainer">
-    <h2>添加/编辑配置</h2>
+    <h2 data-i18n="addEditConfigTitle">添加/编辑配置</h2>
     <input type="hidden" id="configId">
     <div class="form-group">
-      <label for="configName">配置名称:</label>
+      <label for="configName" data-i18n="configNameLabel">配置名称:</label>
       <input type="text" id="configName" placeholder="例如：我的 Gemini 主力">
     </div>
     <div class="form-group">
-      <label for="apiKey">API 密钥:</label>
+      <label for="apiKey" data-i18n="apiKeyLabel">API 密钥:</label>
       <input type="password" id="apiKey" placeholder="粘贴您的 API 密钥">
     </div>
     <div class="form-group">
-      <label for="apiType">API 类型:</label>
+      <label for="apiType" data-i18n="apiTypeLabel">API 类型:</label>
       <select id="apiType">
         <option value="gemini">Google Gemini</option>
         <option value="openai">OpenAI 兼容 API</option>
       </select>
     </div>
     <div class="form-group hidden" id="apiEndpointGroup">
-      <label for="apiEndpoint">API Endpoint URL:</label>
+      <label for="apiEndpoint" data-i18n="apiEndpointLabel">API Endpoint URL:</label>
       <input type="url" id="apiEndpoint" placeholder="例如: https://api.openai.com/v1/chat/completions">
     </div>
     <div class="form-group">
-      <label for="modelName">模型名称:</label>
+      <label for="modelName" data-i18n="modelNameLabel">模型名称:</label>
       <input type="text" id="modelName" placeholder="例如: gemini-1.5-flash-latest 或 gpt-4o">
     </div>
-    <button id="saveConfigButton">保存配置</button>
-    <button type="button" id="clearFormButton">清空表单</button>
-    <button type="button" id="cancelEditButton" class="hidden">取消编辑</button>
+    
+    <button id="saveConfigButton" data-i18n="saveConfig">保存配置</button>
+    <button type="button" id="testConfigButton" data-i18n="testConfig">测试连接</button>
+    <button type="button" id="clearFormButton" data-i18n="clearForm">清空表单</button>
+    <button type="button" id="cancelEditButton" class="hidden" data-i18n="cancelEdit">取消编辑</button>
   </div>
 
   <div class="config-list">
-    <h2>已保存的配置</h2>
+    <h2 data-i18n="savedConfigsTitle">已保存的配置</h2>
     <div id="configurationsList">
-      <p>暂无配置。请添加一个新配置。</p>
+      <p data-i18n="noConfigs">暂无配置。请添加一个新配置。</p>
     </div>
   </div>
   

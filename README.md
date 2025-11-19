@@ -3,6 +3,8 @@
 [![版本](https://img.shields.io/badge/version-1.2.1-blue.svg)](./manifest.json)
 [![许可证](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
+**[English](./README.en.md)**
+
 **一款将强大的大型语言模型（LLM）能力无缝集成到您浏览器侧边栏的智能助手，旨在革新您的网页浏览、信息获取和内容创作体验。**
 
 ---
@@ -81,7 +83,6 @@
 - **Markdown 渲染**: [Marked.js](https://marked.js.org/)
 
 ## 展望未来
-- **国际化 (i18n)**: 提供完整的英语界面选项和文档。
 - **功能增强**:
     - 优化对话历史的管理和搜索功能。
     - 根据用户反馈，探索更多实用的 AI 应用场景。
