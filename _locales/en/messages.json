@@ -1,0 +1,10 @@
+{
+  "appName": {
+    "message": "Smart Sidebar AI: Chat, Summary & Tools",
+    "description": "The name of the extension"
+  },
+  "appDesc": {
+    "message": "Your intelligent browsing companion. Chat with AI, summarize pages, analyze images, and manage prompts using Gemini or OpenAI.",
+    "description": "The description of the extension"
+  }
+}

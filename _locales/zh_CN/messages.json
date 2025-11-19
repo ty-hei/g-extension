@@ -1,0 +1,10 @@
+{
+  "appName": {
+    "message": "智能侧边栏 AI：网页总结与对话助手",
+    "description": "扩展程序的名称"
+  },
+  "appDesc": {
+    "message": "您的智能浏览伴侣。集成 Gemini/OpenAI，一键总结网页、分析图片、提取内容并进行流畅的 AI 对话。",
+    "description": "扩展程序的描述"
+  }
+}
