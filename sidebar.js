@@ -396,6 +396,8 @@ function applyPromptTemplate(template) {
     let content = template.content;
     if (currentSelectedText && content.includes("{{text}}")) {
         content = content.replace(/{{text}}/g, currentSelectedText);
+        // Clear the selected text preview because it has been consumed by the prompt
+        clearSelectedTextPreview();
     }
     chatInput.value = content;
     chatInput.focus();
