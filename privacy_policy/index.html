@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Sidebar Assistant Privacy Policy</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+      line-height: 1.6;
+      margin: 0;
+      padding: 20px;
+      background-color: #f8f9fa;
+      color: #212529;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background-color: #ffffff;
+      padding: 25px 40px;
+      border-radius: 8px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+    }
+    h1 {
+      text-align: center;
+      color: #343a40;
+      border-bottom: 1px solid #dee2e6;
+      padding-bottom: 15px;
+      margin-top: 0;
+    }
+    h2 {
+      color: #495057;
+      margin-top: 30px;
+      padding-bottom: 5px;
+      border-bottom: 1px solid #e9ecef;
+    }
+    h3 {
+      color: #495057;
+      font-size: 1.1em;
+      margin-top: 25px;
+    }
+    p, li {
+      color: #495057;
+    }
+    ul {
+      padding-left: 20px;
+    }
+    strong {
+      color: #343a40;
+    }
+    .policy-effective-date {
+      text-align: center;
+      color: #6c757d;
+      margin-bottom: 15px;
+      font-style: italic;
+    }
+    .language-link {
+      text-align: center;
+      display: block;
+      margin-bottom: 25px;
+      font-size: 0.9em;
+    }
+    .contact-info, .placeholder {
+      background-color: #e9ecef;
+      padding: 3px 6px;
+      border-radius: 4px;
+      font-family: "Courier New", Courier, monospace;
+      color: #c82333; /* Make placeholder stand out */
+    }
+    .important-note {
+        background-color: #fff3cd;
+        border-left: 4px solid #ffeeba;
+        padding: 10px 15px;
+        margin: 20px 0;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <h1>Smart Sidebar Assistant Privacy Policy</h1>
+    <p class="policy-effective-date">
+      <strong>Effective Date:</strong> June 10, 2025
+    </p>
+    <p class="language-link">This policy is also available in <a href="privacy_policy_zh.html">Chinese (中文)</a>.</p>
+
+    <p>Welcome to Smart Sidebar Assistant (hereinafter referred to as "this extension"). We value your privacy and are committed to protecting your personal information.</p>
+    <p>Please read this Privacy Policy carefully and fully understand its terms before using this extension.</p>
+
+    <h2>1. Information We Collect</h2>
+    <p class="important-note"><strong>Important Note:</strong> All information is stored locally in your browser or sent directly by you to a third-party AI service. We (the extension developers) do not have any servers, and we never collect, view, or store any of your personal data or API keys.</p>
+    
+    <h3>User Configuration Information</h3>
+    <ul>
+      <li><strong>API Configurations:</strong> The API settings you add on the options page, including Configuration Name, API Key, API Type, API Endpoint URL (if applicable), and Model Name. This information is stored in <code>chrome.storage.sync</code> to be synced across your Chrome browsers where you are logged into the same Google account.</li>
+      <li><strong>Active Configuration ID:</strong> An identifier for the currently active API configuration. This is also stored in <code>chrome.storage.sync</code>.</li>
+    </ul>
+
+    <h3>User-Generated Content and History</h3>
+    <ul>
+      <li><strong>Conversation History:</strong> The complete record of your conversations with the AI. This is stored in your local browser via <code>chrome.storage.local</code>.</li>
+      <li><strong>Archived Chats:</strong> Conversations or Q&A pairs that you manually archive. This is also stored in <code>chrome.storage.local</code>.</li>
+      <li><strong>Prompt Templates:</strong> The prompt templates you create and save on the management page. This is stored in <code>chrome.storage.local</code>.</li>
+    </ul>
+
+    <h3>Information Processed for Functionality</h3>
+    <ul>
+      <li><strong>Web Page Content:</strong> When you request to "Summarize Current Page" or "Extract Full Text," the extension reads the text content of the current page for processing.</li>
+      <li><strong>Link Content:</strong> When you request to summarize a link, the extension temporarily opens the link in the background to extract its text content.</li>
+      <li><strong>Selected Text or Images:</strong> When you use the context menu to analyze an image or select a piece of text on a web page, the corresponding image URL or text content is retrieved by the extension for subsequent AI analysis.</li>
+    </ul>
+
+    <h2>2. How We Use Your Information</h2>
+    <p>We use your information solely to enable the features of the extension:</p>
+    <ul>
+      <li><strong>Connecting to AI Services:</strong> Your API key and configuration details are used to send requests directly from your browser to the third-party AI service you have chosen (e.g., Google Gemini or an OpenAI-compatible API).</li>
+      <li><strong>Executing Your Instructions:</strong> The text you type, the content you select, and the web page content or image URLs you want to process are sent as part of a request to the AI service to get the desired response (e.g., a summary, translation, or analysis).</li>
+      <li><strong>Maintaining Conversation Context:</strong> Your conversation history is used to build the context for requests sent to the AI, allowing it to understand previous interactions for a coherent dialogue.</li>
+      <li><strong>Providing Personalized Features:</strong> Prompt templates help you quickly perform common tasks. Archiving and history features allow you to review important information.</li>
+    </ul>
+
+    <h2>3. Information Storage and Security</h2>
+    <ul>
+      <li><strong>Local Storage:</strong> Your conversation history, archives, and prompt templates are stored on your local computer using the <code>chrome.storage.local</code> API. This means the data does not leave your device unless you initiate an action that sends it to an AI service.</li>
+      <li><strong>Sync Storage:</strong> Your API configurations are stored using the <code>chrome.storage.sync</code> API. This data is synced across devices where you are logged into the same Google account and is protected by Google's security measures. The developers cannot access this information.</li>
+      <li><strong>Security Measures:</strong> We follow industry-standard practices to protect your information. For example, the API key input field on the options page is a password field (<code>type="password"</code>). The extension contains no code that could send your data to the developers.</li>
+    </ul>
+
+    <h2>4. Information Sharing and Disclosure</h2>
+    <p><strong>We do not share or sell your personal information with any third party.</strong></p>
+    <p>The core working model of this extension is to act as a "bridge" between you and a third-party AI service. When you use this extension, you acknowledge that:</p>
+    <ul>
+        <li>The data you request to be processed (such as web page content or text you type) and your API key are sent directly from your browser to the third-party AI service provider you have configured (e.g., Google or another OpenAI-compatible service).</li>
+        <li>These third-party service providers have their own independent privacy policies and data-handling practices. We strongly recommend that you review their privacy policies before use. This extension is not responsible for the data processing practices of any third-party service.</li>
+    </ul>
+    <p class="important-note"><strong>To reiterate, none of your data ever passes through our servers.</strong></p>
+    
+    <h2>5. Your Rights and Choices</h2>
+    <p>You have complete control over your information:</p>
+    <ul>
+      <li><strong>Access and Modify:</strong> You can view, modify, or delete your API configurations at any time on the extension's "Options" page. You can also manage your templates on the "Manage Prompts" page.</li>
+      <li><strong>Deletion:</strong>
+        <ul>
+          <li>You can permanently delete all conversation history using the "Clear All History" button in the sidebar.</li>
+          <li>You can delete individual archived chats or clear all archives on the "Archived Chats" page.</li>
+          <li>Uninstalling the extension will remove all data stored in <code>chrome.storage.local</code> (including history, archives, and templates).</li>
+        </ul>
+      </li>
+    </ul>
+
+    <h2>6. Children's Privacy</h2>
+    <p>This extension is not intended for use by children under the age of 13. We do not knowingly collect any personally identifiable information from children under 13.</p>
+
+    <h2>7. Changes to This Privacy Policy</h2>
+    <p>We may update this Privacy Policy from time to time. We will post any changes on this page. We encourage you to review this Privacy Policy periodically to stay informed.</p>
+
+    <h2>8. Contact Us</h2>
+    <p>If you have any questions or suggestions about this Privacy Policy, please contact us:</p>
+    <ul>
+      <li><strong>Email:</strong> <span class="contact-info">rt@heihaheihaha.com</span></li>
+      <li><strong>Project Homepage:</strong> <span class="contact-info">https://github.com/ty-hei/g-extension</span></li>
+    </ul>
+  </div>
+
+</body>
+</html>

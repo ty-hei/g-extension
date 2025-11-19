@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>智能侧边栏助手 隐私政策</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+      line-height: 1.6;
+      margin: 0;
+      padding: 20px;
+      background-color: #f8f9fa;
+      color: #212529;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background-color: #ffffff;
+      padding: 25px 40px;
+      border-radius: 8px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+    }
+    h1 {
+      text-align: center;
+      color: #343a40;
+      border-bottom: 1px solid #dee2e6;
+      padding-bottom: 15px;
+      margin-top: 0;
+    }
+    h2 {
+      color: #495057;
+      margin-top: 30px;
+      padding-bottom: 5px;
+      border-bottom: 1px solid #e9ecef;
+    }
+    h3 {
+      color: #495057;
+      font-size: 1.1em;
+      margin-top: 25px;
+    }
+    p, li {
+      color: #495057;
+    }
+    ul {
+      padding-left: 20px;
+    }
+    strong {
+      color: #343a40;
+    }
+    .policy-effective-date {
+      text-align: center;
+      color: #6c757d;
+      margin-bottom: 25px;
+      font-style: italic;
+    }
+    .contact-info, .placeholder {
+      background-color: #e9ecef;
+      padding: 3px 6px;
+      border-radius: 4px;
+      font-family: "Courier New", Courier, monospace;
+      color: #c82333; /* Make placeholder stand out */
+    }
+    .important-note {
+        background-color: #fff3cd;
+        border-left: 4px solid #ffeeba;
+        padding: 10px 15px;
+        margin: 20px 0;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <h1>智能侧边栏助手 (Smart Sidebar Assistant) 隐私政策</h1>
+    <p class="policy-effective-date">
+      <strong>政策生效日期：</strong> 2025年6月10日
+    </p>
+
+    <p>欢迎您使用“智能侧边栏助手”（以下简称“本插件”）。我们深知隐私对您的重要性，并会尽全力保护您的个人信息安全。本隐私政策旨在向您说明本插件如何收集、存储、使用和保护您的信息。</p>
+    <p>请在使用本插件前，仔细阅读并充分理解本政策。</p>
+
+    <h2>1. 我们收集的信息</h2>
+    <p class="important-note"><strong>重要提示：</strong>所有这些信息都存储在您的本地浏览器中，或由您直接提供给第三方 AI 服务。我们（插件开发者）没有任何服务器，也绝不会收集、查看或存储您的任何个人数据或 API 密钥。</p>
+    
+    <h3>用户配置信息</h3>
+    <ul>
+      <li><strong>API 配置:</strong> 您在选项页面添加的 API 配置，包括配置名称、API 密钥、API 类型、API Endpoint URL（如果适用）以及模型名称。此信息存储在 <code>chrome.storage.sync</code> 中，以便在您登录同一 Google 账户的多个 Chrome 浏览器间同步。</li>
+      <li><strong>活动配置ID:</strong> 用于标识当前正在使用的 API 配置。此信息存储在 <code>chrome.storage.sync</code> 中。</li>
+    </ul>
+
+    <h3>用户生成内容与历史记录</h3>
+    <ul>
+      <li><strong>对话历史:</strong> 您与 AI 的完整对话记录。此信息存储在您本地浏览器的 <code>chrome.storage.local</code> 中。</li>
+      <li><strong>已存档对话:</strong> 您手动存档的对话或问答对。此信息同样存储在 <code>chrome.storage.local</code> 中。</li>
+      <li><strong>Prompt 模板:</strong> 您在管理页面创建和保存的 Prompt 模板。此信息存储在 <code>chrome.storage.local</code> 中。</li>
+    </ul>
+
+    <h3>为实现功能而临时处理的信息</h3>
+    <ul>
+      <li><strong>网页内容:</strong> 当您请求“总结当前网页”或“提取全文”时，插件会读取当前页面的文本内容用于处理。</li>
+      <li><strong>链接内容:</strong> 当您拖拽链接或通过其他方式请求总结链接时，插件会在后台临时打开该链接并提取其文本内容。</li>
+      <li><strong>选中的文本或图片:</strong> 当您在网页上使用右键菜单分析图片，或选中一段文本时，相应的图片 URL 或文本内容会被插件获取，以用于后续的 AI 分析。</li>
+    </ul>
+
+    <h2>2. 我们如何使用您的信息</h2>
+    <p>我们使用您的信息完全是为了实现插件的各项功能，具体如下：</p>
+    <ul>
+      <li><strong>建立与 AI 服务的连接:</strong> 您的 API 密钥和配置信息被用来直接从您的浏览器向您选择的第三方 AI 服务（如 Google Gemini 或 OpenAI 兼容 API）发送请求。</li>
+      <li><strong>执行您的指令:</strong> 您输入的文字、选择的文本、请求总结的网页内容或图片 URL，会作为请求的一部分发送给 AI 服务，以获得您期望的回复（如总结、翻译、分析结果等）。</li>
+      <li><strong>维护对话上下文:</strong> 对话历史被用于构建发送给 AI 的请求，使其能够理解之前的交流内容，从而实现连续对话。</li>
+      <li><strong>提供个性化功能:</strong> Prompt 模板帮助您快速执行常用任务。存档和历史记录功能方便您回顾重要的信息。</li>
+    </ul>
+
+    <h2>3. 信息的存储与安全</h2>
+    <ul>
+      <li><strong>本地存储:</strong> 您的对话历史、存档和 Prompt 模板都通过 <code>chrome.storage.local</code> API 存储在您的本地计算机上。这意味着除非您手动操作，否则这些信息不会离开您的设备。</li>
+      <li><strong>同步存储:</strong> 您的 API 配置信息通过 <code>chrome.storage.sync</code> API 存储。它会在您登录了同一 Google 账户的设备间同步，但同样受到 Google 的安全保护，开发者无法访问。</li>
+      <li><strong>安全措施:</strong> 我们采取了行业标准的做法来保护您的信息安全。例如，API 密钥在选项页的输入框中显示为密码（<code>type="password"</code>）。插件不包含任何可能将您的数据发送给开发者的代码。</li>
+    </ul>
+
+    <h2>4. 信息共享与披露</h2>
+    <p><strong>我们不会与任何第三方共享或出售您的个人信息。</strong></p>
+    <p>本插件的核心工作模式是作为您与第三方 AI 服务之间的“桥梁”。当您使用本插件时，您需要知晓：</p>
+    <ul>
+        <li>您请求处理的数据（如网页内容、您输入的文字等）以及您的部分配置信息（如 API 密钥），将由您的浏览器直接发送至您所配置的第三方 AI 服务提供商（例如 Google 或其他 OpenAI 兼容服务商）。</li>
+        <li>这些第三方服务提供商有其独立的隐私政策和数据处理惯例。我们强烈建议您在使用前查阅其相关的隐私政策。本插件不对任何第三方服务的数据处理行为负责。</li>
+    </ul>
+    <p class="important-note"><strong>再次强调，您的任何数据都不会经过我们的服务器。</strong></p>
+    
+    <h2>5. 您的权利与选择</h2>
+    <p>您对您的信息拥有完全的控制权：</p>
+    <ul>
+      <li><strong>访问与修改:</strong> 您可以随时在插件的“选项”页面查看、修改或删除您的 API 配置。您也可以在“管理 Prompt”页面管理您的模板。</li>
+      <li><strong>删除:</strong>
+        <ul>
+          <li>您可以通过侧边栏中的“清除所有历史”按钮永久删除所有对话历史。</li>
+          <li>您可以在“已存档对话”页面单独删除某条存档，或清空所有存档。</li>
+          <li>卸载本插件将清除所有存储在 <code>chrome.storage.local</code> 中的数据（包括历史记录、存档和模板）。</li>
+        </ul>
+      </li>
+    </ul>
+
+    <h2>6. 儿童隐私</h2>
+    <p>本插件不适用于13岁以下的儿童。我们不会有意收集任何来自13岁以下儿童的个人身份信息。</p>
+
+    <h2>7. 本隐私政策的变更</h2>
+    <p>我们可能会适时更新本隐私政策。任何变更我们都会在本页面上发布新版本。我们建议您定期查阅，以了解最新的隐私政策。</p>
+
+    <h2>8. 联系我们</h2>
+    <p>如果您对本隐私政策有任何疑问或建议，请通过以下方式与我们联系：</p>
+    <ul>
+      <li><strong>电子邮件:</strong> <span class="contact-info">rt@heihaheihaha.com</span></li>
+      <li><strong>项目主页:</strong> <span class="contact-info">https://github.com/ty-hei/g-extension</span></li>
+    </ul>
+  </div>
+
+</body>
+</html>
