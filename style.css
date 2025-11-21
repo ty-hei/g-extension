@@ -1,18 +1,153 @@
-body {
-  width: 300px;
-  font-family: sans-serif;
-  padding: 10px;
+/* Popup - Modern Premium UI */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
 }
+
+:root {
+  --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  --bg-gradient: linear-gradient(135deg, #f5f7fa 0%, #e8eaf0 100%);
+  --text-primary: #2d3748;
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.1);
+  --shadow-glow: 0 0 20px rgba(102, 126, 234, 0.4);
+  --radius-sm: 8px;
+  --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg-gradient: linear-gradient(135deg, #1a202c 0%, #2d3748 100%);
+    --text-primary: #f7fafc;
+    --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
+  }
+}
+
+@keyframes slideInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse {
+
+  0%,
+  100% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.03);
+  }
+}
+
+body {
+  width: 320px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  padding: 20px;
+  background: var(--bg-gradient);
+  color: var(--text-primary);
+  animation: slideInDown 0.3s ease-out;
+}
+
+.popup-container {
+  text-align: center;
+}
+
+.popup-header {
+  margin-bottom: 20px;
+}
+
+.popup-header h2 {
+  font-size: 1.4em;
+  font-weight: 700;
+  background: var(--primary-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 8px;
+}
+
+.popup-header p {
+  font-size: 0.9em;
+  color: var(--text-primary);
+  opacity: 0.8;
+}
+
 #summarizeButton {
   width: 100%;
-  padding: 10px;
-  margin-bottom: 10px;
+  padding: 16px 20px;
+  margin-bottom: 16px;
+  background: var(--primary-gradient);
+  color: white;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 1.1em;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+  box-shadow: var(--shadow-md);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
+
+#summarizeButton:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-glow);
+  animation: pulse 2s ease-in-out infinite;
+}
+
+#summarizeButton:active {
+  transform: translateY(0) scale(0.98);
+}
+
 #summaryOutput {
-  white-space: pre-wrap; /* Preserve formatting of the summary */
+  white-space: pre-wrap;
   max-height: 400px;
   overflow-y: auto;
-  border: 1px solid #ccc;
-  padding: 5px;
-  min-height: 50px; /* So it's visible when empty or showing 'Summarizing...' */
+  padding: 16px;
+  min-height: 60px;
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(10px);
+  border: 2px solid rgba(226, 232, 240, 0.8);
+  border-radius: var(--radius-sm);
+  font-size: 0.95em;
+  line-height: 1.6;
+  text-align: left;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05);
+  transition: var(--transition);
+}
+
+@media (prefers-color-scheme: dark) {
+  #summaryOutput {
+    background: rgba(26, 32, 44, 0.6);
+    border-color: rgba(74, 85, 104, 0.6);
+  }
+}
+
+#summaryOutput:empty::before {
+  content: 'Summary will appear here...';
+  color: var(--text-primary);
+  opacity: 0.5;
+  font-style: italic;
+}
+
+#summaryOutput::-webkit-scrollbar {
+  width: 8px;
+}
+
+#summaryOutput::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+#summaryOutput::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 10px;
 }

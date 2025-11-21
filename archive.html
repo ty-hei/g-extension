@@ -1,17 +1,48 @@
 <!DOCTYPE html>
 <html>
+
 <head>
   <title data-i18n="archiveTitle">已存档对话</title>
   <meta charset="utf-8">
-  <link rel="stylesheet" href="archive.css"> </head>
+  <link rel="stylesheet" href="archive.css">
+</head>
+
 <body>
-  <div class="archive-container">
-    <h1 data-i18n="archiveTitle">已存档的对话</h1>
-    <div id="archivedChatsList">
-      <p data-i18n="loadingArchive">正在加载存档...</p>
-    </div>
-    <button id="clearAllArchivedButton" data-i18n="clearAllArchives">清空所有存档</button>
+  <div class="app-container">
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <h2 data-i18n="archiveTitle">已存档对话</h2>
+      </div>
+      <div id="chat-list" class="chat-list">
+        <!-- Chat items will be inserted here -->
+      </div>
+      <div class="sidebar-footer">
+        <button id="clearAllArchivedButton" class="btn-danger" data-i18n="clearAllArchives">清空所有存档</button>
+      </div>
+    </aside>
+    <main class="main-content">
+      <div id="chat-detail-container" class="chat-detail-view">
+        <div class="empty-state">
+          <div class="empty-state-icon">💬</div>
+          <p id="empty-state-text">Select a chat to view details</p>
+        </div>
+      </div>
+
+      <!-- Chat Input Area (Hidden by default until chat selected) -->
+      <div id="archive-input-container" class="archive-input-container" style="display: none;">
+        <div class="input-wrapper">
+          <textarea id="archive-chat-input" placeholder="Type a message..." rows="1"></textarea>
+          <button id="archive-send-btn" class="send-btn">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" fill="currentColor" />
+            </svg>
+          </button>
+        </div>
+      </div>
+    </main>
   </div>
+  <script src="libs/marked.min.js"></script>
   <script src="archive.js"></script>
 </body>
+
 </html>

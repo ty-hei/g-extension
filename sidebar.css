@@ -1,114 +1,194 @@
-/* sidebar.css - Beautified Version (AI messages full width) with Dark Mode Support */
+/* sidebar.css - Premium Modern UI with Glassmorphism and Animations */
+
+/* ========================================
+   CSS Variables - Modern Color Palette
+   ======================================== */
 :root {
-  /* --- Color Palette Variables (Light Mode Default) --- */
+  /* --- Vibrant Gradient Colors (Light Mode) --- */
+  --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  --success-gradient: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+  --danger-gradient: linear-gradient(135deg, #ee0979 0%, #ff6a00 100%);
+  --neutral-gradient: linear-gradient(135deg, #606c88 0%, #3f4c6b 100%);
+  --background-gradient: linear-gradient(135deg, #f5f7fa 0%, #e8eaf0 100%);
+
+  /* --- Semantic Colors (Light Mode) --- */
   --sidebar-bg-color: #f8f9fa;
   --primary-text-color: #212529;
   --secondary-text-color: #495057;
   --light-text-color: #6c757d;
-  --border-color: #dee2e6;
+  --border-color: rgba(222, 226, 230, 0.6);
   --hover-bg-color: #e9ecef;
   --active-bg-color: #d1d9e0;
 
-  --user-message-bg: #e7f3ff;
+  --user-message-bg: linear-gradient(135deg, #e7f3ff 0%, #d0e7ff 100%);
   --user-message-text: #0056b3;
-  --ai-message-bg: #f1f3f5;
+  --ai-message-bg: rgba(241, 243, 245, 0.6);
   --ai-message-text: #343a40;
 
-  --primary-button-bg: #007bff;
-  --primary-button-hover-bg: #0056b3;
+  --primary-button-bg: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  --primary-button-hover-glow: rgba(102, 126, 234, 0.4);
   --primary-button-text: #ffffff;
 
-  --destructive-button-bg: #dc3545;
-  --destructive-button-hover-bg: #c82333;
+  --destructive-button-bg: linear-gradient(135deg, #ee0979 0%, #ff6a00 100%);
+  --destructive-button-hover-glow: rgba(238, 9, 121, 0.4);
   --destructive-button-text: #ffffff;
 
-  --control-button-bg: #6c757d;
-  --control-button-hover-bg: #5a6268;
+  --control-button-bg: linear-gradient(135deg, #606c88 0%, #3f4c6b 100%);
+  --control-button-hover-glow: rgba(96, 108, 136, 0.3);
   --control-button-text: #ffffff;
 
-  /* New semantic variables for components */
-  --chat-bg-color: #ffffff;
-  --input-bg-color: #ffffff;
-  --code-block-bg: #e9ecef;
-  --inline-code-bg: rgba(0,0,0,0.04);
-  
-  --prompt-shortcut-bg: #e9ecef;
-  --prompt-shortcut-border: #ced4da;
-  --prompt-shortcut-hover-bg: #d1d9e0;
-  --prompt-shortcut-hover-border: #adb5bd;
+  /* Glassmorphism */
+  --glass-bg: rgba(255, 255, 255, 0.25);
+  --glass-border: rgba(255, 255, 255, 0.4);
+  --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
 
-  --preview-bg-color: #fff3cd;
+  --chat-bg-color: rgba(255, 255, 255, 0.3);
+  --input-bg-color: rgba(255, 255, 255, 0.5);
+  --code-block-bg: rgba(233, 236, 239, 0.8);
+  --inline-code-bg: rgba(0, 0, 0, 0.05);
+
+  --prompt-shortcut-bg: linear-gradient(135deg, #e9ecef 0%, #f8f9fa 100%);
+  --prompt-shortcut-border: rgba(206, 212, 218, 0.5);
+  --prompt-shortcut-hover-bg: linear-gradient(135deg, #d1d9e0 0%, #e9ecef 100%);
+
+  --preview-bg-color: rgba(255, 243, 205, 0.9);
   --preview-text-color: #856404;
-  --preview-border-color: #ffeeba;
-  
-  --archived-text-color: #28a745;
-  --link-color: #007bff;
+  --preview-border-color: rgba(255, 238, 186, 0.8);
 
-  --font-family-sans-serif: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
-  --border-radius: 6px;
-  --input-focus-border: #80bdff;
-  --input-focus-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+  --archived-text-color: #28a745;
+  --link-color: #667eea;
+
+  --font-family-sans-serif: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --border-radius: 12px;
+  --border-radius-sm: 8px;
+  --input-focus-border: #667eea;
+  --input-focus-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+
+  /* Animation timings */
+  --transition-fast: 0.15s ease-out;
+  --transition-medium: 0.3s ease-out;
+  --transition-slow: 0.5s ease-out;
 }
 
-/* --- Dark Mode Overrides --- */
+/* ========================================
+   Dark Mode Overrides
+   ======================================== */
 @media (prefers-color-scheme: dark) {
   :root {
+    --background-gradient: linear-gradient(135deg, #1a1d23 0%, #2b2d35 100%);
     --sidebar-bg-color: #212529;
     --primary-text-color: #f8f9fa;
     --secondary-text-color: #ced4da;
     --light-text-color: #adb5bd;
-    --border-color: #495057;
+    --border-color: rgba(73, 80, 87, 0.5);
     --hover-bg-color: #343a40;
     --active-bg-color: #495057;
 
-    --user-message-bg: #0f3d6e; /* Darker blue */
+    --user-message-bg: linear-gradient(135deg, #0f3d6e 0%, #1a4d7e 100%);
     --user-message-text: #d0e3ff;
-    --ai-message-bg: #343a40; /* Dark grey */
+    --ai-message-bg: rgba(52, 58, 64, 0.6);
     --ai-message-text: #e9ecef;
 
-    --primary-button-bg: #0d6efd;
-    --primary-button-hover-bg: #0b5ed7;
-    /* primary-button-text stays white */
+    --primary-button-hover-glow: rgba(102, 126, 234, 0.5);
+    --control-button-hover-glow: rgba(73, 80, 87, 0.4);
 
-    /* destructive buttons stay mostly same or slightly darker red if needed */
-    
-    --control-button-bg: #495057;
-    --control-button-hover-bg: #343a40;
-    --control-button-text: #e9ecef;
+    --glass-bg: rgba(43, 45, 53, 0.4);
+    --glass-border: rgba(255, 255, 255, 0.1);
+    --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
 
-    --chat-bg-color: #2b3035;
-    --input-bg-color: #2b3035;
-    --code-block-bg: #1a1d20;
-    --inline-code-bg: rgba(255,255,255,0.1);
+    --chat-bg-color: rgba(43, 48, 53, 0.4);
+    --input-bg-color: rgba(43, 48, 53, 0.6);
+    --code-block-bg: rgba(26, 29, 32, 0.8);
+    --inline-code-bg: rgba(255, 255, 255, 0.1);
 
-    --prompt-shortcut-bg: #343a40;
-    --prompt-shortcut-border: #495057;
-    --prompt-shortcut-hover-bg: #495057;
-    --prompt-shortcut-hover-border: #6c757d;
+    --prompt-shortcut-bg: linear-gradient(135deg, #343a40 0%, #495057 100%);
+    --prompt-shortcut-border: rgba(73, 80, 87, 0.5);
+    --prompt-shortcut-hover-bg: linear-gradient(135deg, #495057 0%, #5a6268 100%);
 
-    --preview-bg-color: #463c14; /* Dark yellow/brown */
+    --preview-bg-color: rgba(70, 60, 20, 0.8);
     --preview-text-color: #ffdf7e;
-    --preview-border-color: #66561c;
+    --preview-border-color: rgba(102, 86, 28, 0.6);
 
-    --archived-text-color: #75b798; /* Light green */
-    --link-color: #6ea8fe;
-    
-    --input-focus-border: #375a7f;
-    --input-focus-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+    --archived-text-color: #75b798;
+    --link-color: #8b9dff;
+
+    --input-focus-shadow: 0 0 0 3px rgba(102, 126, 234, 0.3);
   }
 }
 
+/* ========================================
+   Keyframe Animations
+   ======================================== */
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes pulse {
+
+  0%,
+  100% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
+/* ========================================
+   Base Styles
+   ======================================== */
 body {
   margin: 0;
   font-family: var(--font-family-sans-serif);
   font-size: 14px;
-  line-height: 1.5;
+  line-height: 1.6;
   color: var(--primary-text-color);
-  background-color: var(--sidebar-bg-color);
+  background: var(--background-gradient);
   display: flex;
   flex-direction: column;
   height: 100vh;
-  overflow: hidden; /* Prevent body scroll, individual sections will scroll */
+  overflow: hidden;
 }
 
 .sidebar-container {
@@ -117,362 +197,517 @@ body {
   flex-direction: column;
   height: 100%;
   box-sizing: border-box;
-  gap: 12px; /* Spacing between main sections */
+  gap: 10px;
+  animation: fadeIn var(--transition-slow);
 }
 
-/* CONTROLS LAYOUT MODIFIED */
+/* ========================================
+   Control Buttons
+   ======================================== */
 .controls-primary {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px;
+  gap: 8px;
 }
 
 .controls-secondary {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px;
-  margin-top: 4px;
-  padding-top: 4px;
-  border-top: 1px dashed var(--border-color);
+  gap: 8px;
+  margin-top: 8px;
+  padding-top: 12px;
+  border-top: 2px dashed var(--border-color);
 }
 
-.controls-primary button, .controls-secondary button {
+.controls-primary button,
+.controls-secondary button {
   padding: 6px 10px;
   flex-grow: 1;
   border: none;
-  background-color: var(--control-button-bg);
+  background: var(--control-button-bg);
   color: var(--control-button-text);
   cursor: pointer;
-  border-radius: var(--border-radius);
+  border-radius: var(--border-radius-sm);
   font-size: 0.85em;
-  transition: background-color 0.15s ease-in-out;
-  text-align: center;
+  font-weight: 500;
+  transition: all var(--transition-medium);
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
-.controls-primary button:hover, .controls-secondary button:hover {
-  background-color: var(--control-button-hover-bg);
+.controls-primary button:hover,
+.controls-secondary button:hover {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 4px 12px var(--control-button-hover-glow),
+    0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
-/* Specific style for the toggle button (gear icon) */
+.controls-primary button:active,
+.controls-secondary button:active {
+  transform: translateY(0) scale(0.98);
+}
+
 button#toggleMoreActionsButton {
   flex-grow: 0;
-  width: 32px; /* Fixed width for icon */
+  width: 40px;
   min-width: unset;
   padding: 6px 0;
+  font-size: 1.1em;
 }
+
 button#toggleMoreActionsButton.active {
-  background-color: var(--primary-button-bg);
-  color: var(--primary-button-text);
+  background: var(--primary-button-bg);
+  box-shadow: 0 4px 12px var(--primary-button-hover-glow);
 }
 
-
-/* MODIFIED STYLES FOR PROMPT SHORTCUTS - START */
+/* ========================================
+   Prompt Shortcuts
+   ======================================== */
 .prompt-shortcuts-container {
-  padding: 4px 0px; /* Reduced from 8px 0px */
-  margin-bottom: 6px; /* Reduced from 10px */
-  /* border-bottom: 1px solid var(--border-color); */ /* Optional separator */
+  padding: 2px 0;
+  margin-bottom: 4px;
 }
 
 .prompt-shortcuts-container h4 {
-  margin-top: 0;
-  margin-bottom: 4px; /* Reduced from 8px */
-  font-size: 0.9em; /* Slightly smaller */
+  margin: 0 0 4px 0;
+  font-size: 0.85em;
   color: var(--secondary-text-color);
-  font-weight: 500;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .prompt-shortcuts {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px; /* Reduced from 8px */
+  gap: 4px;
 }
 
 .prompt-shortcut-button {
-  padding: 4px 8px; /* Reduced from 6px 10px */
-  background-color: var(--prompt-shortcut-bg);
+  padding: 4px 10px;
+  background: var(--prompt-shortcut-bg);
   color: var(--primary-text-color);
   border: 1px solid var(--prompt-shortcut-border);
-  border-radius: var(--border-radius);
+  border-radius: var(--border-radius-sm);
   cursor: pointer;
   font-size: 0.85em;
-  transition: background-color 0.15s ease-in-out, border-color 0.15s ease-in-out;
+  font-weight: 500;
+  transition: all var(--transition-medium);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
 .prompt-shortcut-button:hover {
-  background-color: var(--prompt-shortcut-hover-bg);
-  border-color: var(--prompt-shortcut-hover-border);
+  background: var(--prompt-shortcut-hover-bg);
+  transform: translateY(-1px) scale(1.03);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
-/* MODIFIED STYLES FOR PROMPT SHORTCUTS - END */
 
+.prompt-shortcut-button:active {
+  transform: translateY(0) scale(0.98);
+}
+
+/* ========================================
+   Chat Area - Glassmorphism
+   ======================================== */
 .chat-area {
   flex-grow: 1;
   display: flex;
   flex-direction: column;
   gap: 10px;
-  min-height: 0; /* Allows chatOutput to shrink and grow properly */
+  min-height: 0;
 }
 
 #chatOutput {
   flex-grow: 1;
   overflow-y: auto;
-  padding: 8px;
-  border: 1px solid var(--border-color);
+  padding: 16px;
+  border: 1px solid var(--glass-border);
   border-radius: var(--border-radius);
-  background-color: var(--chat-bg-color);
-  min-height: 150px; /* Ensure it has some height */
+  background: var(--chat-bg-color);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: var(--glass-shadow);
+  min-height: 200px;
 }
 
+/* ========================================
+   Messages with Animations
+   ======================================== */
 .message {
-  margin-bottom: 10px;
-  padding: 10px 14px;
+  margin-bottom: 14px;
+  padding: 14px 18px;
   border-radius: var(--border-radius);
-  line-height: 1.6;
+  line-height: 1.7;
   position: relative;
   word-wrap: break-word;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  transition: all var(--transition-medium);
 }
 
 .message.user {
-  background-color: var(--user-message-bg);
+  background: var(--user-message-bg);
   color: var(--user-message-text);
-  margin-right: 20%;
+  margin-right: 15%;
+  margin-left: 8px;
+  animation: slideInRight 0.4s ease-out;
 }
 
 .message.ai {
-  background-color: var(--ai-message-bg);
+  background: var(--ai-message-bg);
   color: var(--ai-message-text);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid var(--glass-border);
+  animation: slideInLeft 0.4s ease-out;
 }
 
-.message-content-wrapper {
-  padding-bottom: 5px;
+.message:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
 }
+
+/* Message content styling */
+.message-content-wrapper {
+  padding-bottom: 6px;
+}
+
 .message-content-wrapper p:last-child {
   margin-bottom: 0;
 }
+
 .message-content-wrapper pre {
   background-color: var(--code-block-bg);
-  padding: 10px;
-  border-radius: var(--border-radius);
+  padding: 12px;
+  border-radius: var(--border-radius-sm);
   overflow-x: auto;
   font-size: 0.9em;
   color: var(--primary-text-color);
+  border: 1px solid var(--border-color);
 }
+
 .message-content-wrapper code {
   background-color: var(--inline-code-bg);
-  padding: 0.2em 0.4em;
+  padding: 0.2em 0.5em;
   margin: 0;
-  font-size: 85%;
-  border-radius: 3px;
+  font-size: 0.9em;
+  border-radius: 4px;
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
 }
+
 .message-content-wrapper pre code {
   background-color: transparent;
   padding: 0;
   margin: 0;
   font-size: inherit;
   border-radius: 0;
-  color: inherit;
 }
 
-
+/* Message footer */
 .message-footer {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 0.8em;
+  font-size: 0.75em;
   color: var(--light-text-color);
-  margin-top: 6px;
-}
-
-.timestamp {
-  /* No specific styles needed if footer handles it */
+  margin-top: 8px;
+  padding-top: 6px;
+  border-top: 1px solid var(--border-color);
 }
 
 .message-actions {
-    display: flex;
-    align-items: center;
-    gap: 12px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
 }
 
-.copy-action, .archive-action {
-    cursor: pointer;
-    font-size: 1.1em;
-    line-height: 1;
-    transition: transform 0.2s ease, color 0.2s ease;
+.copy-action,
+.archive-action {
+  cursor: pointer;
+  font-size: 1.2em;
+  line-height: 1;
+  transition: all var(--transition-medium);
+  padding: 4px;
+  border-radius: 4px;
 }
 
-.copy-action:hover, .archive-action:hover {
-    transform: scale(1.2);
+.copy-action:hover,
+.archive-action:hover {
+  transform: scale(1.25);
+  background: var(--hover-bg-color);
 }
 
 .copy-action {
-    color: var(--light-text-color);
+  color: var(--light-text-color);
 }
+
 .copy-action:hover {
-    color: var(--primary-text-color);
+  color: var(--primary-text-color);
 }
 
 .archive-action {
-    color: var(--primary-button-bg);
-}
-.archive-action:hover {
-    color: var(--primary-button-hover-bg);
+  color: var(--link-color);
 }
 
 .archived-text {
   color: var(--archived-text-color);
   font-style: italic;
-  cursor: default;
+  font-weight: 600;
 }
 
+/* ========================================
+   Preview Areas
+   ======================================== */
 #selectedTextPreview {
   font-size: 0.9em;
-  background-color: var(--preview-bg-color);
+  background: var(--preview-bg-color);
   color: var(--preview-text-color);
-  padding: 8px 12px;
+  padding: 10px 14px;
   border: 1px solid var(--preview-border-color);
-  border-radius: var(--border-radius);
+  border-radius: var(--border-radius-sm);
   display: flex;
   justify-content: space-between;
   align-items: center;
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  animation: slideInLeft 0.3s ease-out;
 }
+
 #selectedTextContent {
   flex-grow: 1;
-  margin-right: 8px;
+  margin-right: 10px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
 #clearSelectedTextButton {
   background: none;
-  border: none;
+  border: 1px solid var(--preview-border-color);
   color: var(--preview-text-color);
-  font-size: 1em;
-  padding: 2px 5px;
+  font-size: 0.9em;
+  padding: 4px 10px;
   cursor: pointer;
-  border-radius: 3px;
-}
-#clearSelectedTextButton:hover {
-  background-color: rgba(0,0,0,0.1);
+  border-radius: 6px;
+  transition: all var(--transition-fast);
+  font-weight: 500;
 }
 
+#clearSelectedTextButton:hover {
+  background: rgba(0, 0, 0, 0.1);
+  transform: scale(1.05);
+}
+
+/* ========================================
+   Input Area
+   ======================================== */
 #chatInput {
   width: 100%;
-  min-height: 70px;
-  padding: 10px;
-  border: 1px solid var(--border-color);
-  background-color: var(--input-bg-color);
+  min-height: 60px;
+  padding: 10px 12px;
+  border: 2px solid var(--border-color);
+  background: var(--input-bg-color);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   color: var(--primary-text-color);
   border-radius: var(--border-radius);
   box-sizing: border-box;
   font-family: inherit;
   font-size: 1em;
-  line-height: 1.5;
+  line-height: 1.6;
   resize: vertical;
-  transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+  transition: all var(--transition-medium);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
+
 #chatInput:focus {
   border-color: var(--input-focus-border);
   outline: 0;
   box-shadow: var(--input-focus-shadow);
+  background: var(--input-bg-color);
 }
 
+#chatInput::placeholder {
+  color: var(--light-text-color);
+  opacity: 0.7;
+}
+
+/* ========================================
+   Send Area
+   ======================================== */
 .send-area-container {
-    display: flex;
-    gap: 8px;
-    align-items: center; /* Align items vertically centered */
+  display: flex;
+  gap: 10px;
+  align-items: center;
 }
 
 #sendMessageButton {
-  padding: 10px 15px;
-  flex-grow: 1; /* Take available space */
-  background-color: var(--primary-button-bg);
+  padding: 12px 20px;
+  flex-grow: 1;
+  background: var(--primary-button-bg);
   color: var(--primary-button-text);
   border: none;
-  border-radius: var(--border-radius);
+  border-radius: var(--border-radius-sm);
   cursor: pointer;
   font-size: 1em;
-  transition: background-color 0.15s ease-in-out;
+  font-weight: 600;
+  transition: all var(--transition-medium);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+  position: relative;
+  overflow: hidden;
 }
+
 #sendMessageButton:hover {
-  background-color: var(--primary-button-hover-bg);
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 6px 20px var(--primary-button-hover-glow),
+    0 2px 8px rgba(0, 0, 0, 0.15);
 }
+
+#sendMessageButton:active {
+  transform: translateY(0) scale(0.98);
+}
+
 #sendMessageButton:disabled {
-  background-color: var(--secondary-text-color);
-  opacity: 0.6;
+  background: var(--neutral-gradient);
+  opacity: 0.5;
   cursor: not-allowed;
+  transform: none;
 }
 
 .shortcut-hint {
-  font-size: 0.85em;
+  font-size: 0.8em;
   color: var(--light-text-color);
   white-space: nowrap;
   user-select: none;
+  font-weight: 500;
+  padding: 4px 8px;
+  background: var(--glass-bg);
+  border-radius: 6px;
+  backdrop-filter: blur(5px);
 }
 
 #clearAllHistoryButton {
-  flex-shrink: 0; /* Prevent shrinking */
-  padding: 8px 12px;
-  background-color: transparent;
-  color: var(--destructive-button-bg);
-  border: 1px solid var(--border-color);
-  border-radius: var(--border-radius);
+  flex-shrink: 0;
+  padding: 10px 14px;
+  background: transparent;
+  color: var(--primary-text-color);
+  border: 2px solid var(--border-color);
+  border-radius: var(--border-radius-sm);
   font-size: 1.1em;
   line-height: 1;
   cursor: pointer;
-  transition: background-color 0.15s ease-in-out, color 0.15s ease-in-out;
+  transition: all var(--transition-medium);
 }
 
 #clearAllHistoryButton:hover {
-  background-color: var(--destructive-button-bg);
+  background: var(--danger-gradient);
   color: var(--destructive-button-text);
-  border-color: var(--destructive-button-bg);
+  border-color: transparent;
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px var(--destructive-button-hover-glow);
 }
 
+/* ========================================
+   Status Messages
+   ======================================== */
 .temporary-status {
   font-style: italic;
   color: var(--light-text-color);
-  background-color: var(--sidebar-bg-color);
-  padding: 8px 10px;
+  background: var(--glass-bg);
+  backdrop-filter: blur(10px);
+  padding: 10px 14px;
   text-align: center;
   border: 1px dashed var(--border-color);
+  border-radius: var(--border-radius-sm);
+  animation: fadeIn 0.3s ease-out;
 }
 
-/* Scrollbar styling (optional, browser-specific) */
+/* ========================================
+   Custom Scrollbar
+   ======================================== */
 #chatOutput::-webkit-scrollbar {
-  width: 8px;
+  width: 10px;
 }
 
 #chatOutput::-webkit-scrollbar-track {
   background: transparent;
+  border-radius: 10px;
 }
 
 #chatOutput::-webkit-scrollbar-thumb {
-  background-color: var(--border-color);
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   border-radius: 10px;
   border: 2px solid transparent;
   background-clip: content-box;
 }
 
 #chatOutput::-webkit-scrollbar-thumb:hover {
-  background-color: var(--light-text-color);
+  background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+  background-clip: content-box;
 }
 
-/* Basic styling for markdown elements from marked.js */
+/* ========================================
+   Markdown Elements
+   ======================================== */
 .message-content-wrapper ul,
 .message-content-wrapper ol {
-  padding-left: 20px;
+  padding-left: 22px;
+  margin: 8px 0;
 }
+
+.message-content-wrapper li {
+  margin: 4px 0;
+}
+
 .message-content-wrapper blockquote {
-  border-left: 3px solid var(--border-color);
-  padding-left: 10px;
+  border-left: 4px solid var(--link-color);
+  padding-left: 14px;
   margin-left: 0;
+  margin: 12px 0;
   color: var(--secondary-text-color);
   font-style: italic;
+  background: var(--glass-bg);
+  padding: 10px 14px;
+  border-radius: 0 var(--border-radius-sm) var(--border-radius-sm) 0;
 }
+
 .message-content-wrapper a {
-    color: var(--link-color);
-    text-decoration: none;
+  color: var(--link-color);
+  text-decoration: none;
+  font-weight: 500;
+  transition: all var(--transition-fast);
+  border-bottom: 1px solid transparent;
 }
+
 .message-content-wrapper a:hover {
-    text-decoration: underline;
+  border-bottom-color: var(--link-color);
+  opacity: 0.8;
+}
+
+.message-content-wrapper h1,
+.message-content-wrapper h2,
+.message-content-wrapper h3 {
+  margin-top: 16px;
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+
+.message-content-wrapper table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 12px 0;
+  border-radius: var(--border-radius-sm);
+  overflow: hidden;
+}
+
+.message-content-wrapper th,
+.message-content-wrapper td {
+  border: 1px solid var(--border-color);
+  padding: 8px 12px;
+  text-align: left;
+}
+
+.message-content-wrapper th {
+  background: var(--glass-bg);
+  font-weight: 600;
 }

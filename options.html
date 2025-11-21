@@ -4,41 +4,353 @@
   <title data-i18n="optionsTitle">智能侧边栏API设置</title>
   <meta charset="utf-8">
   <style>
-    body { font-family: sans-serif; padding: 20px; max-width: 700px; margin: auto; font-size: 14px; }
-    h1, h2 { text-align: center; }
-    label { display: block; margin-bottom: 5px; font-weight: bold; }
-    input[type="text"], input[type="url"], select, textarea {
-      width: 100%; padding: 8px; margin-bottom: 10px; box-sizing: border-box;
-      border: 1px solid #ccc; border-radius: 4px; font-size: 1em;
+    /* Modern Premium Options Page Design */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
     }
-    button {
-      padding: 8px 12px; background-color: #007bff; color: white;
-      border: none; border-radius: 4px; cursor: pointer; margin-right: 5px; font-size: 0.9em;
-    }
-    button:hover { background-color: #0056b3; }
-    button.delete-btn { background-color: #dc3545; }
-    button.delete-btn:hover { background-color: #c82333; }
-    button.edit-btn { background-color: #ffc107; color: #212529; }
-    button.edit-btn:hover { background-color: #e0a800; }
-    button.set-active-btn { background-color: #28a745; }
-    button.set-active-btn:hover { background-color: #218838; }
-    /* Style for Test Button */
-    button#testConfigButton { background-color: #17a2b8; }
-    button#testConfigButton:hover { background-color: #138496; }
 
-    #status { margin-top: 15px; font-weight: bold; text-align: center; }
-    .config-form, .config-list { margin-top: 20px; padding: 15px; border: 1px solid #eee; border-radius: 5px; background-color: #f9f9f9; }
-    .config-item {
-      padding: 10px; border-bottom: 1px solid #eee; display: flex;
-      justify-content: space-between; align-items: center;
+    :root {
+      --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      --success-gradient: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+      --danger-gradient: linear-gradient(135deg, #ee0979 0%, #ff6a00 100%);
+      --warning-gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+      --info-gradient: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+      
+      --bg-gradient: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+      --card-bg: rgba(255, 255, 255, 0.95);
+      --glass-border: rgba(255, 255, 255, 0.6);
+      --text-primary: #2d3748;
+      --text-secondary: #4a5568;
+      --text-light: #718096;
+      --border-color: rgba(226, 232, 240, 0.8);
+      
+      --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.08);
+      --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.1);
+      --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12);
+      --shadow-glow: 0 0 20px rgba(102, 126, 234, 0.3);
+      
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 16px;
+      
+      --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
-    .config-item:last-child { border-bottom: none; }
-    .config-details { flex-grow: 1; }
-    .config-actions button { margin-left: 5px; }
-    .is-active { font-weight: bold; color: #28a745; }
-    .form-group { margin-bottom: 10px; }
-    .hidden { display: none; }
-    .general-settings { margin-bottom: 20px; padding: 15px; border: 1px solid #eee; border-radius: 5px; background-color: #f0f8ff; }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg-gradient: linear-gradient(135deg, #1a202c 0%, #2d3748 100%);
+        --card-bg: rgba(45, 55, 72, 0.95);
+        --glass-border: rgba(255, 255, 255, 0.1);
+        --text-primary: #f7fafc;
+        --text-secondary: #e2e8f0;
+        --text-light: #a0aec0;
+        --border-color: rgba(74, 85, 104, 0.6);
+        
+        --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
+        --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
+        --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
+      }
+    }
+
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(30px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateX(-20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background: var(--bg-gradient);
+      background-attachment: fixed;
+      color: var(--text-primary);
+      padding: 40px 20px;
+      min-height: 100vh;
+      line-height: 1.6;
+      animation: fadeInUp 0.6s ease-out;
+    }
+
+    h1 {
+      text-align: center;
+      font-size: 2.5em;
+      font-weight: 700;
+      margin-bottom: 15px;
+      background: var(--primary-gradient);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      animation: slideIn 0.5s ease-out;
+    }
+
+    h2 {
+      font-size: 1.5em;
+      font-weight: 600;
+      margin-bottom: 20px;
+      color: var(--text-primary);
+      border-left: 4px solid;
+      border-image: var(--primary-gradient) 1;
+      padding-left: 15px;
+    }
+
+    .general-settings,
+    .config-form,
+    .config-list {
+      background: var(--card-bg);
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-lg);
+      padding: 30px;
+      margin-bottom: 30px;
+      box-shadow: var(--shadow-md);
+      transition: var(--transition);
+      animation: fadeInUp 0.7s ease-out;
+      max-width: 900px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .general-settings:hover,
+    .config-form:hover,
+    .config-list:hover {
+      box-shadow: var(--shadow-lg);
+      transform: translateY(-2px);
+    }
+
+    .general-settings {
+      background: linear-gradient(135deg, rgba(79, 172, 254, 0.1) 0%, rgba(0, 242, 254, 0.1) 100%), var(--card-bg);
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      font-size: 0.95em;
+    }
+
+    input[type="text"],
+    input[type="url"],
+    input[type="password"],
+    select,
+    textarea {
+      width: 100%;
+      padding: 12px 16px;
+      border: 2px solid var(--border-color);
+      border-radius: var(--radius-sm);
+      font-size: 1em;
+      font-family: inherit;
+      background: rgba(255, 255, 255, 0.8);
+      color: var(--text-primary);
+      transition: var(--transition);
+      box-shadow: var(--shadow-sm);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      input[type="text"],
+      input[type="url"],
+      input[type="password"],
+      select,
+      textarea {
+        background: rgba(26, 32, 44, 0.6);
+      }
+    }
+
+    input:focus,
+    select:focus,
+    textarea:focus {
+      outline: none;
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+      transform: translateY(-1px);
+    }
+
+    button {
+      padding: 12px 24px;
+      border: none;
+      border-radius: var(--radius-sm);
+      font-size: 0.95em;
+      font-weight: 600;
+      cursor: pointer;
+      transition: var(--transition);
+      box-shadow: var(--shadow-sm);
+      position: relative;
+      overflow: hidden;
+      background: var(--primary-gradient);
+      color: white;
+      margin-right: 10px;
+      margin-bottom: 10px;
+    }
+
+    button:hover {
+      transform: translateY(-2px) scale(1.02);
+      box-shadow: var(--shadow-md);
+    }
+
+    button:active {
+      transform: translateY(0) scale(0.98);
+    }
+
+    button.delete-btn {
+      background: var(--danger-gradient);
+    }
+
+    button.edit-btn {
+      background: var(--warning-gradient);
+      color: white;
+    }
+
+    button.set-active-btn {
+      background: var(--success-gradient);
+    }
+
+    button#testConfigButton {
+      background: var(--info-gradient);
+    }
+
+    #status {
+      margin-top: 20px;
+      padding: 15px 20px;
+      text-align: center;
+      font-weight: 600;
+      border-radius: var(--radius-sm);
+      animation: slideIn 0.3s ease-out;
+      box-shadow: var(--shadow-sm);
+      max-width: 900px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .config-item {
+      padding: 20px;
+      margin-bottom: 15px;
+      border: 2px solid var(--border-color);
+      border-radius: var(--radius-md);
+      background: rgba(255, 255, 255, 0.6);
+      backdrop-filter: blur(5px);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: var(--transition);
+      animation: slideIn 0.4s ease-out;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .config-item {
+        background: rgba(45, 55, 72, 0.6);
+      }
+    }
+
+    .config-item:hover {
+      border-color: #667eea;
+      transform: translateX(5px);
+      box-shadow: var(--shadow-md);
+    }
+
+    .config-item:last-child {
+      margin-bottom: 0;
+    }
+
+    .config-details {
+      flex-grow: 1;
+    }
+
+    .config-details h3 {
+      margin-bottom: 8px;
+      color: var(--text-primary);
+      font-size: 1.2em;
+    }
+
+    .config-details p {
+      color: var(--text-light);
+      font-size: 0.9em;
+      margin: 4px 0;
+    }
+
+    .config-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .config-actions button {
+      margin: 0;
+      padding: 8px 16px;
+      font-size: 0.85em;
+    }
+
+    .is-active {
+      border: 3px solid transparent;
+      border-image: var(--success-gradient) 1;
+      background: linear-gradient(135deg, rgba(17, 153, 142, 0.1) 0%, rgba(56, 239, 125, 0.1) 100%), rgba(255, 255, 255, 0.6);
+      box-shadow: var(--shadow-glow);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .is-active {
+        background: linear-gradient(135deg, rgba(17, 153, 142, 0.2) 0%, rgba(56, 239, 125, 0.2) 100%), rgba(45, 55, 72, 0.6);
+      }
+    }
+
+    .is-active h3::after {
+      content: ' ✓';
+      color: #11998e;
+      font-weight: bold;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    @media (max-width: 768px) {
+      body {
+        padding: 20px 15px;
+      }
+
+      h1 {
+        font-size: 2em;
+      }
+
+      .general-settings,
+      .config-form,
+      .config-list {
+        padding: 20px;
+      }
+
+      .config-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 15px;
+      }
+
+      .config-actions {
+        width: 100%;
+      }
+
+      .config-actions button {
+        flex: 1;
+      }
+    }
   </style>
 </head>
 <body>

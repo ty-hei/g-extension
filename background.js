@@ -5,6 +5,7 @@ let currentLanguage = 'zh';
 const translations = {
   zh: {
     analyzeImage: "用 Gemini 分析图片",
+    summarizeLink: "总结链接网页",
     errorActiveTab: "无法确定活动标签页。",
     errorCSComm: "获取页面内容失败 (CS通讯错误): ",
     errorContentInvalid: "未能从页面获取内容 (CS数据无效或格式错误)。",
@@ -17,6 +18,7 @@ const translations = {
   },
   en: {
     analyzeImage: "Analyze image with Gemini",
+    summarizeLink: "Summarize Link",
     errorActiveTab: "Cannot determine active tab.",
     errorCSComm: "Failed to get page content (CS Comm Error): ",
     errorContentInvalid: "Failed to get content (Invalid Data).",
@@ -55,6 +57,11 @@ function updateContextMenu() {
       title: t('analyzeImage'),
       contexts: ["image"]
     });
+    chrome.contextMenus.create({
+      id: "summarizeLinkTarget",
+      title: t('summarizeLink'),
+      contexts: ["link"]
+    });
   });
 }
 
@@ -72,6 +79,13 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
       if (chrome.runtime.lastError) {
         console.log("Background: Sidebar not open?", chrome.runtime.lastError.message);
       }
+    });
+  } else if (info.menuItemId === "summarizeLinkTarget" && info.linkUrl) {
+    // Send message to background's own listener to trigger summarization
+    chrome.runtime.sendMessage({
+      action: "summarizeLinkTarget",
+      url: info.linkUrl,
+      linkText: info.linkUrl
     });
   }
 });
@@ -106,62 +120,83 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         return;
       }
       const activeTabId = tabs[0].id;
+      const pageUrl = tabs[0].url || '';
+      const pageTitle = tabs[0].title || '';
+
       chrome.tabs.sendMessage(activeTabId, { action: "getPageContentForSummarize" }, (pageResponse) => {
         if (chrome.runtime.lastError) {
           sendResponse({ error: t('errorCSComm') + chrome.runtime.lastError.message });
           return;
         }
         if (pageResponse && typeof pageResponse.contentForSummary === 'string') {
-          sendResponse({ contentForSummary: pageResponse.contentForSummary });
+          sendResponse({
+            contentForSummary: pageResponse.contentForSummary,
+            pageUrl: pageUrl,
+            pageTitle: pageTitle
+          });
         } else {
           sendResponse({ error: t('errorContentInvalid') });
         }
       });
     });
     return true;
+  } else if (request.action === "openSidePanel") {
+    // Open the side panel
+    chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
+      if (tabs && tabs.length > 0) {
+        try {
+          await chrome.sidePanel.open({ windowId: tabs[0].windowId });
+          sendResponse({ success: true });
+        } catch (error) {
+          console.error("Failed to open side panel:", error);
+          sendResponse({ success: false, error: error.message });
+        }
+      }
+    });
+    return true;
   } else if (request.action === "extractActiveTabContent") {
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-        if (!tabs || tabs.length === 0 || !tabs[0].id) {
-            sendResponse({ success: false, error: t('errorActiveTab') });
-            return;
-        }
-        const activeTabId = tabs[0].id;
-        const tabUrl = tabs[0].url;
+      if (!tabs || tabs.length === 0 || !tabs[0].id) {
+        sendResponse({ success: false, error: t('errorActiveTab') });
+        return;
+      }
+      const activeTabId = tabs[0].id;
+      const tabUrl = tabs[0].url;
 
-        if (tabUrl.startsWith('chrome://') || tabUrl.startsWith('about:') || tabUrl.startsWith('https://chrome.google.com/webstore')) {
-           const errMsg = t('errorScriptFail');
-           sendResponse({ success: false, error: errMsg });
-           chrome.runtime.sendMessage({
-              type: "EXTRACT_CONTENT_ERROR",
-              message: errMsg
-           });
-           return;
-        }
-
-        chrome.scripting.executeScript({
-            target: { tabId: activeTabId },
-            files: ["libs/Readability.js", "page_content_extractor.js"]
-        }, (injectionResults) => {
-            if (chrome.runtime.lastError) {
-                const errMsg = t('errorInjectFail') + chrome.runtime.lastError.message;
-                sendResponse({ success: false, error: errMsg });
-                chrome.runtime.sendMessage({
-                    type: "EXTRACT_CONTENT_ERROR",
-                    message: errMsg
-                });
-            } else {
-                sendResponse({ success: true });
-            }
+      if (tabUrl.startsWith('chrome://') || tabUrl.startsWith('about:') || tabUrl.startsWith('https://chrome.google.com/webstore')) {
+        const errMsg = t('errorScriptFail');
+        sendResponse({ success: false, error: errMsg });
+        chrome.runtime.sendMessage({
+          type: "EXTRACT_CONTENT_ERROR",
+          message: errMsg
         });
+        return;
+      }
+
+      chrome.scripting.executeScript({
+        target: { tabId: activeTabId },
+        files: ["libs/Readability.js", "page_content_extractor.js"]
+      }, (injectionResults) => {
+        if (chrome.runtime.lastError) {
+          const errMsg = t('errorInjectFail') + chrome.runtime.lastError.message;
+          sendResponse({ success: false, error: errMsg });
+          chrome.runtime.sendMessage({
+            type: "EXTRACT_CONTENT_ERROR",
+            message: errMsg
+          });
+        } else {
+          sendResponse({ success: true });
+        }
+      });
     });
-    return true; 
+    return true;
   } else if (request.action === "TEXT_SELECTED_FROM_PAGE") {
     chrome.runtime.sendMessage({ type: "TEXT_SELECTED_FOR_SIDEBAR", text: request.text });
-    sendResponse({ status: "Text selected event forwarded" }); 
+    sendResponse({ status: "Text selected event forwarded" });
     return true;
   } else if (request.action === "summarizeLinkTarget") {
     const linkUrl = request.url;
-    const linkText = request.linkText || linkUrl; 
+    const linkText = request.linkText || linkUrl;
     sendResponse({ status: t('linkProcessing') });
 
     chrome.runtime.sendMessage({ type: "LINK_SUMMARIZATION_STARTED", url: linkUrl, title: linkText });
@@ -192,15 +227,15 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       chrome.tabs.onUpdated.addListener(tabUpdateListener);
       setTimeout(() => {
         chrome.tabs.get(tempTabId, (tabDetails) => {
-          if (tabDetails && tabDetails.status && !tabDetails.status.includes('complete')) { 
+          if (tabDetails && tabDetails.status && !tabDetails.status.includes('complete')) {
             chrome.tabs.onUpdated.removeListener(tabUpdateListener);
             chrome.runtime.sendMessage({ type: "SHOW_LINK_SUMMARY_ERROR", message: t('errorTimeout'), url: linkUrl, title: linkText });
             chrome.tabs.remove(tempTabId).catch(e => console.warn("BG: Failed to remove temp tab", e));
-          } else if (!tabDetails) { 
+          } else if (!tabDetails) {
             chrome.tabs.onUpdated.removeListener(tabUpdateListener);
           }
         });
-      }, 20000); 
+      }, 20000);
     });
     return true;
   } else if (request.action === "extractedLinkContent") {
@@ -218,13 +253,13 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         type: "SUMMARIZE_EXTERNAL_TEXT_FOR_SIDEBAR",
         text: content,
         linkUrl: originalUrlFromExtractor,
-        linkTitle: extractedTitle, 
+        linkTitle: extractedTitle,
         warning: warning
       });
     }
-    sendResponse({status: "Link content processed."});
+    sendResponse({ status: "Link content processed." });
     return true;
   }
 
-  return false; 
+  return false;
 });

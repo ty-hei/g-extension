@@ -1,10 +1,12 @@
 <!DOCTYPE html>
 <html>
+
 <head>
   <title>智能助手</title>
   <meta charset="utf-8">
   <link rel="stylesheet" href="sidebar.css">
 </head>
+
 <body>
   <div class="sidebar-container">
     <div class="controls-primary">
@@ -12,7 +14,7 @@
       <button id="extractContentButton" data-i18n="extractContent">提取全文作为引用</button>
       <button id="toggleMoreActionsButton" class="icon-button" title="更多操作">⚙️</button>
     </div>
-    
+
     <div id="moreActionsMenu" class="controls-secondary" style="display: none;">
       <button id="splitChatButton" data-i18n="splitChat">分割当前对话</button>
       <button id="viewArchivedChatsButton" data-i18n="viewArchived">查看已存档对话</button>
@@ -22,18 +24,20 @@
     <div class="prompt-shortcuts-container">
       <h4 data-i18n="promptShortcuts">Prompt 快捷方式:</h4>
       <div id="promptShortcuts" class="prompt-shortcuts">
-        </div>
+      </div>
     </div>
 
     <div class="chat-area">
       <div id="chatOutput">
-        </div>
+      </div>
 
       <div id="selectedImagePreviewContainer" style="display:none; margin-bottom: 5px; text-align: center;">
-        </div>
-      <button id="clearSelectedImageButton" data-i18n="clearImage" style="display: none; margin: 0 auto 8px auto; font-size: 0.8em; padding: 3px 8px; width: fit-content; background-color: var(--control-button-bg); color: var(--control-button-text); border: none; border-radius: var(--border-radius); cursor:pointer;">清除图片</button>
+      </div>
+      <button id="clearSelectedImageButton" data-i18n="clearImage"
+        style="display: none; margin: 0 auto 8px auto; font-size: 0.8em; padding: 3px 8px; width: fit-content; background-color: var(--control-button-bg); color: var(--control-button-text); border: none; border-radius: var(--border-radius); cursor:pointer;">清除图片</button>
 
-      <div id="selectedTextPreview" style="display:none; font-style: italic; color: gray; padding: 5px; border: 1px dashed #ccc; margin-bottom: 5px;">
+      <div id="selectedTextPreview"
+        style="display:none; font-style: italic; color: gray; padding: 5px; border: 1px dashed #ccc; margin-bottom: 5px;">
         <span data-i18n="quoteContent">引用内容:</span> <span id="selectedTextContent"></span>
         <button id="clearSelectedTextButton" data-i18n="clear" style="margin-left: 5px; font-size: 0.8em;">清除</button>
       </div>
@@ -44,8 +48,9 @@
         <button id="clearAllHistoryButton" title="清除所有历史">🗑️</button>
       </div>
     </div>
-    </div>
+  </div>
   <script src="/libs/marked.min.js"></script>
   <script src="sidebar.js"></script>
 </body>
+
 </html>

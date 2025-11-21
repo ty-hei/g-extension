@@ -1,5 +1,5 @@
 // g-extension/page_content_extractor.js
-(function() {
+(function () {
   // 检查 Readability 是否已加载
   if (typeof Readability !== 'function') {
     chrome.runtime.sendMessage({
@@ -23,7 +23,7 @@
     });
     return;
   }
-  
+
   if (article && article.textContent) {
     chrome.runtime.sendMessage({
       action: "extractedPageContent",
@@ -34,12 +34,12 @@
     // 如果 Readability 未返回任何内容，则回退到 body.innerText
     const fallbackContent = document.body && document.body.innerText ? document.body.innerText.trim() : "";
     if (fallbackContent) {
-       chrome.runtime.sendMessage({
-          action: "extractedPageContent",
-          content: fallbackContent,
-          title: document.title || "N/A",
-          warning: "Readability.js 提取失败，已使用全文作为后备。内容质量可能有所不同。"
-        });
+      chrome.runtime.sendMessage({
+        action: "extractedPageContent",
+        content: fallbackContent,
+        title: document.title || "N/A",
+        warning: "Readability.js 提取失败，已使用全文作为后备。内容质量可能有所不同。"
+      });
     } else {
       chrome.runtime.sendMessage({
         action: "extractedPageContent",
