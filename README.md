@@ -1,6 +1,6 @@
 # Smart Sidebar Assistant / 智能侧边栏助手
 
-[![Version](https://img.shields.io/badge/version-1.3.0-blue.svg)](./manifest.json)
+[![Version](https://img.shields.io/badge/version-1.3.1-blue.svg)](./manifest.json)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 [English](#english) | [中文](#chinese)
@@ -50,7 +50,17 @@
 
 ### 📝 Changelog
 
-#### v1.3.0 (Current)
+#### v1.3.1 (Current)
+* **🚀 Experience Upgrades**:
+    * **Smoother Streaming**: Fixed the jitter issue during AI responses for a silky-smooth reading experience.
+    * **Smart Auto-Scroll**: The chat window now intelligently scrolls with AI output but pauses automatically when you scroll up to read history.
+* **🔗 Enhanced Link Summarization**:
+    * **Drag & Drop Preview**: Restored the link drag-and-drop preview! Drag any link to the floating window in the bottom-right to summarize it and auto-open the sidebar.
+    * **Context Menu**: Added "Summarize Link" to the context menu for easier access.
+* **📝 Detail Improvements**:
+    * Page summary requests now include the page title and URL in the chat history for better context.
+
+#### v1.3.0
 * **🌍 Internationalization**: Added full support for English and Chinese languages. Users can switch languages in the Options page.
 * **🌙 Dark Mode**: The interface now automatically adapts to the system's dark/light color scheme.
 * **🔌 Connection Test**: Added a "Test Connection" button in the API configuration page to verify settings before saving.
@@ -107,7 +117,17 @@
 
 ### 📝 更新日志 (Changelog)
 
-#### v1.3.0 (当前版本)
+#### v1.3.1 (Current)
+* **🚀 体验升级**:
+    * **流畅输出**: 彻底修复了 AI 回复时的抖动问题，带来丝般顺滑的阅读体验。
+    * **智能滚屏**: 聊天窗口现在会智能跟随 AI 输出滚动，但当您向上查看历史时会自动暂停，互不打扰。
+* **🔗 链接总结增强**:
+    * **拖拽预览回归**: 重新上线了链接拖拽预览功能！拖动任意链接到右下角悬浮窗，即可快速总结，并自动打开侧边栏。
+    * **右键菜单**: 新增“总结链接网页”右键菜单项，操作更便捷。
+* **📝 细节优化**:
+    * 网页总结请求现在会在历史记录中包含页面标题和 URL，方便回溯。
+
+#### v1.3.0
 * **🌍 国际化支持**: 全面支持中英文界面切换，可在选项页进行设置。
 * **🌙 夜间模式**: 侧边栏界面现在会根据系统的深色/浅色模式自动调整配色。
 * **🔌 连接测试**: 选项页面新增“测试连接”按钮，方便用户在保存前验证 API 配置是否通畅。
