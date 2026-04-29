@@ -1,0 +1,1088 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Sidebar Assistant - Next Gen AI</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            /* 核心色板 */
+            --accent: #3b82f6;
+            --accent-glow: rgba(59, 130, 246, 0.5);
+            --text-primary: #0f172a;
+            --text-secondary: #475569;
+            --bg-page: #f8fafc;
+
+            /* 玻璃材质 */
+            --glass-bg: rgba(255, 255, 255, 0.7);
+            --glass-border: rgba(255, 255, 255, 0.8);
+
+            /* 模拟器 UI */
+            --sim-bg: #ffffff;
+            --sim-sidebar: #f8fafc;
+            --sim-border: #e2e8f0;
+            --sim-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(0, 0, 0, 0.05);
+
+            /* 聊天气泡 */
+            --msg-user-bg: #3b82f6;
+            --msg-user-text: #ffffff;
+            --msg-ai-bg: #ffffff;
+            --msg-ai-text: #1e293b;
+            --msg-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+
+            --nav-height: 70px;
+            --max-width: 1500px;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --accent: #60a5fa;
+                --accent-glow: rgba(96, 165, 250, 0.4);
+                --text-primary: #f8fafc;
+                --text-secondary: #94a3b8;
+                --bg-page: #020617;
+
+                --glass-bg: rgba(15, 23, 42, 0.6);
+                --glass-border: rgba(255, 255, 255, 0.1);
+
+                --sim-bg: #0f172a;
+                --sim-sidebar: #1e293b;
+                --sim-border: #334155;
+                --sim-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.1);
+
+                --msg-user-bg: #3b82f6;
+                --msg-user-text: #ffffff;
+                --msg-ai-bg: #1e293b;
+                --msg-ai-text: #e2e8f0;
+                --msg-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            }
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: var(--bg-page);
+            color: var(--text-primary);
+            overflow-x: hidden;
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* === 动态背景 === */
+        .ambient-light {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            z-index: -1;
+            background: var(--bg-page);
+        }
+
+        .light-blob {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(80px);
+            opacity: 0.4;
+            animation: float 10s infinite ease-in-out;
+        }
+
+        .blob-1 {
+            top: -10%;
+            left: -10%;
+            width: 50vw;
+            height: 50vw;
+            background: radial-gradient(circle, #8b5cf6 0%, transparent 70%);
+        }
+
+        .blob-2 {
+            bottom: -10%;
+            right: -10%;
+            width: 60vw;
+            height: 60vw;
+            background: radial-gradient(circle, #3b82f6 0%, transparent 70%);
+            animation-delay: -5s;
+        }
+
+        @keyframes float {
+
+            0%,
+            100% {
+                transform: translate(0, 0) scale(1);
+            }
+
+            50% {
+                transform: translate(20px, -20px) scale(1.1);
+            }
+        }
+
+        /* === 导航栏 === */
+        nav {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            height: var(--nav-height);
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--glass-border);
+            z-index: 1000;
+        }
+
+        .nav-inner {
+            max-width: var(--max-width);
+            margin: 0 auto;
+            padding: 0 24px;
+            height: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-weight: 700;
+            font-size: 1.25rem;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: var(--text-primary);
+            text-decoration: none;
+        }
+
+        .logo img {
+            height: 32px;
+        }
+
+        .nav-right {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+        }
+
+        .nav-link {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.95rem;
+            font-weight: 500;
+            transition: 0.2s;
+        }
+
+        .nav-link:hover {
+            color: var(--text-primary);
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: white;
+            padding: 10px 24px;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 0.95rem;
+            text-decoration: none;
+            box-shadow: 0 4px 20px var(--accent-glow);
+            transition: all 0.3s;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+        }
+
+        .btn-outline {
+            padding: 10px 24px;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 0.95rem;
+            text-decoration: none;
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-primary);
+            border: 1px solid var(--glass-border);
+        }
+
+        .btn-outline:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .lang-switch {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            cursor: pointer;
+            padding: 6px 12px;
+            border-radius: 8px;
+            transition: 0.2s;
+            font-weight: 600;
+            border: 1px solid transparent;
+        }
+
+        .lang-switch:hover {
+            background: rgba(128, 128, 128, 0.1);
+            color: var(--text-primary);
+        }
+
+        /* === Hero === */
+        .hero {
+            padding: 180px 24px 100px;
+            text-align: center;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .hero h1 {
+            font-size: clamp(2.5rem, 8vw, 4.5rem);
+            line-height: 1.1;
+            margin-bottom: 24px;
+            font-weight: 800;
+            letter-spacing: -0.03em;
+            background: linear-gradient(135deg, var(--text-primary) 40%, var(--text-secondary));
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: fadeUp 0.8s ease-out forwards;
+            opacity: 0;
+            transform: translateY(20px);
+        }
+
+        .hero p {
+            font-size: clamp(1rem, 3vw, 1.35rem);
+            color: var(--text-secondary);
+            max-width: 680px;
+            margin: 0 auto 40px;
+            animation: fadeUp 0.8s ease-out 0.2s forwards;
+            opacity: 0;
+            transform: translateY(20px);
+        }
+
+        .hero-btns {
+            display: flex;
+            justify-content: center;
+            gap: 16px;
+            flex-wrap: wrap;
+            animation: fadeUp 0.8s ease-out 0.4s forwards;
+            opacity: 0;
+            transform: translateY(20px);
+        }
+
+        @keyframes fadeUp {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* === Scrollytelling === */
+        .scrolly-container {
+            display: flex;
+            max-width: var(--max-width);
+            margin: 0 auto;
+            gap: 80px;
+            position: relative;
+            padding: 0 24px;
+        }
+
+        .text-col {
+            flex: 1;
+            min-width: 0;
+            padding-bottom: 150px;
+        }
+
+        /* --- 修复点：优化文字段落的样式 --- */
+        .step {
+            min-height: 90vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            opacity: 0.55;
+            /* 提高非激活状态的透明度，使其可见 */
+            transition: all 0.5s ease;
+            padding: 40px 0;
+            /* filter: blur(2px);  <-- 移除了模糊滤镜 */
+        }
+
+        .step.active {
+            opacity: 1;
+            transform: translateX(10px);
+        }
+
+        /* 激活时轻微右移 */
+
+        .step-icon {
+            font-size: clamp(1.8rem, 5vw, 2.5rem);
+            margin-bottom: 24px;
+            display: block;
+        }
+
+        .step h2 {
+            font-size: clamp(1.5rem, 4vw, 2.2rem);
+            margin-bottom: 16px;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+        }
+
+        .step p {
+            font-size: clamp(1rem, 2.5vw, 1.2rem);
+            color: var(--text-secondary);
+            line-height: 1.7;
+        }
+
+        /* === 模拟器 === */
+        .visual-col {
+            flex: 1.3;
+            position: sticky;
+            top: calc(var(--nav-height) + 40px);
+            height: calc(100vh - var(--nav-height) - 80px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            perspective: 2000px;
+        }
+
+        #feature-img {
+            width: 100%;
+            height: auto;
+            max-height: 100%;
+            object-fit: contain;
+            border-radius: 12px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            transition: opacity 0.3s ease;
+            border: 1px solid var(--sim-border);
+        }
+
+        /* 模拟网页 */
+        .page {
+            flex: 1;
+            padding: 40px 50px;
+            overflow: hidden;
+            position: relative;
+            background: var(--sim-bg);
+            transition: 0.3s;
+        }
+
+        .sk-block {
+            background: var(--sim-sidebar);
+            border-radius: 6px;
+            margin-bottom: 16px;
+        }
+
+        .sk-img {
+            height: 240px;
+            width: 100%;
+            border-radius: 12px;
+            margin-bottom: 32px;
+            overflow: hidden;
+            border: 1px solid var(--sim-border);
+        }
+
+        .sk-img img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            opacity: 0.8;
+        }
+
+        .sk-text {
+            height: 12px;
+            width: 100%;
+            border-radius: 6px;
+        }
+
+        .sk-text.w60 {
+            width: 60%;
+        }
+
+        .mock-link {
+            color: var(--accent);
+            border-bottom: 1px dashed var(--accent);
+            padding-bottom: 1px;
+            cursor: grab;
+        }
+
+        .text-highlight {
+            background: rgba(251, 191, 36, 0.3);
+            border-radius: 4px;
+            box-shadow: 0 0 0 2px rgba(251, 191, 36, 0.3);
+        }
+
+        /* 右键菜单 */
+        .mock-ctx {
+            position: absolute;
+            width: 200px;
+            background: var(--sim-bg);
+            border: 1px solid var(--sim-border);
+            border-radius: 10px;
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.2);
+            padding: 6px;
+            display: none;
+            z-index: 60;
+            top: 140px;
+            left: 180px;
+            font-size: 13px;
+            backdrop-filter: blur(20px);
+        }
+
+        .ctx-item {
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: default;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--text-primary);
+        }
+
+        .ctx-item.active {
+            background: var(--accent);
+            color: white;
+        }
+
+        /* 侧边栏 */
+        .sidebar {
+            width: 340px;
+            background: var(--sim-sidebar);
+            border-left: 1px solid var(--sim-border);
+            display: flex;
+            flex-direction: column;
+            position: absolute;
+            right: 0;
+            top: 0;
+            bottom: 0;
+            transform: translateX(100%);
+            transition: transform 0.5s cubic-bezier(0.19, 1, 0.22, 1);
+            box-shadow: -10px 0 40px rgba(0, 0, 0, 0.1);
+            z-index: 20;
+        }
+
+        .sidebar.open {
+            transform: translateX(0);
+        }
+
+        .sb-head {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--sim-border);
+            display: flex;
+            gap: 10px;
+        }
+
+        .sb-btn {
+            flex: 1;
+            padding: 8px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            border: 1px solid var(--sim-border);
+            background: var(--sim-bg);
+            color: var(--text-primary);
+            cursor: pointer;
+            text-align: center;
+        }
+
+        .sb-btn.primary {
+            background: var(--accent);
+            color: white;
+            border-color: transparent;
+        }
+
+        .sb-btn.icon {
+            flex: 0;
+            padding: 8px 10px;
+            font-size: 14px;
+        }
+
+        .sb-shortcuts {
+            padding: 12px 20px;
+            border-bottom: 1px solid var(--sim-border);
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .tag {
+            background: var(--sim-bg);
+            border: 1px solid var(--sim-border);
+            color: var(--text-secondary);
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 500;
+            transition: 0.3s;
+        }
+
+        .tag.active {
+            background: var(--accent);
+            color: white;
+            border-color: var(--accent);
+        }
+
+        .tag.new {
+            animation: popIn 0.4s;
+            border: 1px dashed var(--accent);
+        }
+
+        .chat-box {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .msg {
+            padding: 12px 16px;
+            border-radius: 14px;
+            font-size: 13px;
+            max-width: 92%;
+            line-height: 1.6;
+            opacity: 0;
+            transform: translateY(10px);
+            animation: msgPop 0.4s forwards;
+            box-shadow: var(--msg-shadow);
+        }
+
+        .msg.u {
+            align-self: flex-end;
+            background: var(--msg-user-bg);
+            color: var(--msg-user-text);
+            border-bottom-right-radius: 2px;
+        }
+
+        .msg.a {
+            align-self: flex-start;
+            background: var(--msg-ai-bg);
+            color: var(--msg-ai-text);
+            border-bottom-left-radius: 2px;
+            border: 1px solid var(--sim-border);
+        }
+
+        .msg.info {
+            align-self: center;
+            background: transparent;
+            box-shadow: none;
+            color: var(--text-secondary);
+            font-size: 11px;
+            padding: 0;
+            text-align: center;
+        }
+
+        .quote {
+            margin: 0 20px 10px;
+            padding: 10px 14px;
+            background: rgba(251, 191, 36, 0.1);
+            border-left: 3px solid #fbbf24;
+            border-radius: 8px;
+            font-size: 12px;
+            color: #b45309;
+            display: none;
+            animation: slideDown 0.3s;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .quote {
+                color: #fbbf24;
+            }
+        }
+
+        .input-zone {
+            padding: 16px 20px;
+            border-top: 1px solid var(--sim-border);
+            background: var(--sim-bg);
+        }
+
+        .fake-input {
+            height: 40px;
+            border: 1px solid var(--sim-border);
+            border-radius: 20px;
+            background: var(--sim-sidebar);
+            display: flex;
+            align-items: center;
+            padding: 0 16px;
+            font-size: 13px;
+            color: var(--text-secondary);
+            opacity: 0.7;
+        }
+
+        /* Prompt 表单 & 预览窗 & 下拉菜单 */
+        .prompt-form {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--sim-sidebar);
+            z-index: 30;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            transform: translateX(100%);
+            transition: transform 0.4s cubic-bezier(0.2, 0, 0, 1);
+        }
+
+        .prompt-form.show {
+            transform: translateX(0);
+        }
+
+        .pf-label {
+            display: block;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 6px;
+        }
+
+        .pf-input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid var(--sim-border);
+            border-radius: 8px;
+            background: var(--sim-bg);
+            color: var(--text-primary);
+            font-size: 13px;
+            outline: none;
+            font-family: inherit;
+        }
+
+        .pf-textarea {
+            min-height: 120px;
+            resize: vertical;
+        }
+
+        .preview-win {
+            position: absolute;
+            bottom: 24px;
+            right: 24px;
+            width: 260px;
+            background: var(--sim-bg);
+            border: 1px solid var(--sim-border);
+            border-radius: 12px;
+            padding: 16px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.2);
+            display: none;
+            z-index: 50;
+            font-size: 13px;
+            color: var(--text-primary);
+            animation: slideUp 0.4s;
+        }
+
+        .preview-win strong {
+            display: block;
+            margin-bottom: 6px;
+            color: var(--accent);
+        }
+
+        .model-dropdown {
+            position: absolute;
+            top: 60px;
+            right: 20px;
+            width: 140px;
+            background: var(--sim-bg);
+            border: 1px solid var(--sim-border);
+            border-radius: 8px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+            z-index: 40;
+            display: none;
+            animation: fadeIn 0.2s;
+        }
+
+        .md-item {
+            padding: 10px 14px;
+            font-size: 12px;
+            cursor: pointer;
+            color: var(--text-primary);
+        }
+
+        .md-item:hover {
+            background: var(--sim-sidebar);
+        }
+
+        .cursor {
+            width: 24px;
+            height: 24px;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='black' stroke='white' stroke-width='1.5'%3E%3Cpath d='M5.5 3.21l10.08 15.08-4.24.88 3.62 7.55-2.72 1.36-3.73-7.43-3.69 3.69V3.21z'/%3E%3C/svg%3E");
+            position: absolute;
+            z-index: 200;
+            transition: transform 0.7s cubic-bezier(0.19, 1, 0.22, 1);
+            pointer-events: none;
+            filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.2));
+            left: 0;
+            top: 0;
+        }
+
+        /* 动画 */
+        @keyframes msgPop {
+            from {
+                opacity: 0;
+                transform: translateY(10px) scale(0.95);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes popIn {
+            0% {
+                transform: scale(0.8);
+                opacity: 0;
+            }
+
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        footer {
+            text-align: center;
+            padding: 100px 0;
+            color: var(--text-secondary);
+            border-top: 1px solid var(--glass-border);
+            margin-top: 80px;
+            background: var(--glass-bg);
+        }
+
+        /* === Responsive Design === */
+        @media (max-width: 768px) {
+            :root {
+                --nav-height: 60px;
+            }
+
+            .nav-inner {
+                padding: 0 16px;
+            }
+
+            .logo {
+                font-size: 1rem;
+            }
+
+            .logo img {
+                height: 28px;
+            }
+
+            .nav-right {
+                gap: 12px;
+            }
+
+            .nav-link {
+                font-size: 0.85rem;
+            }
+
+            .btn-primary {
+                padding: 8px 16px;
+                font-size: 0.85rem;
+            }
+
+            .hero {
+                padding: 120px 20px 60px;
+            }
+
+            .hero-btns {
+                gap: 12px;
+            }
+
+            .scrolly-container {
+                flex-direction: column-reverse;
+                gap: 0;
+                padding: 0 20px;
+            }
+
+            .visual-col {
+                position: relative;
+                top: 0;
+                height: 500px;
+                min-height: 400px;
+                margin-bottom: 40px;
+            }
+
+            .text-col {
+                padding: 0 0 30px;
+            }
+
+            .step {
+                min-height: auto;
+                opacity: 1;
+                padding: 24px 20px;
+                background: var(--glass-bg);
+                border-radius: 16px;
+                border: 1px solid var(--sim-border);
+                margin-bottom: 30px;
+                filter: none;
+                transform: none !important;
+            }
+
+            .browser {
+                border-radius: 12px;
+                max-height: 90%;
+            }
+
+            .sidebar {
+                width: 100%;
+            }
+
+            .page {
+                padding: 24px 20px;
+            }
+
+            .sk-img {
+                height: 140px;
+                margin-bottom: 20px;
+            }
+
+            footer {
+                padding: 60px 20px;
+                margin-top: 40px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .nav-link:not(.btn-primary) {
+                display: none;
+            }
+
+            .nav-right {
+                gap: 8px;
+            }
+
+            .hero {
+                padding: 100px 16px 40px;
+            }
+
+            .hero-btns {
+                flex-direction: column;
+                width: 100%;
+                max-width: 280px;
+                margin: 0 auto;
+            }
+
+            .hero-btns a {
+                width: 100%;
+                text-align: center;
+            }
+
+            .scrolly-container {
+                padding: 0 16px;
+            }
+
+            .visual-col {
+                height: 400px;
+            }
+
+            .step {
+                padding: 20px 16px;
+                margin-bottom: 24px;
+            }
+
+            .browser {
+                border-radius: 8px;
+            }
+
+            .url-bar {
+                padding: 10px 12px;
+            }
+
+            .dot {
+                width: 8px;
+                height: 8px;
+            }
+
+            .page {
+                padding: 20px 16px;
+            }
+
+            .sb-head {
+                padding: 12px 16px;
+            }
+
+            .sb-btn {
+                font-size: 11px;
+                padding: 6px;
+            }
+
+            .chat-box {
+                padding: 16px;
+            }
+
+            .msg {
+                font-size: 12px;
+                max-width: 95%;
+            }
+
+            footer {
+                padding: 40px 16px;
+                font-size: 0.9rem;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="ambient-light">
+        <div class="light-blob blob-1"></div>
+        <div class="light-blob blob-2"></div>
+    </div>
+
+    <nav>
+        <div class="nav-inner">
+            <a href="#" class="logo">
+                <img src="../images/icon128.png" alt="logo">
+                <span data-i18n="title">智能侧边栏助手</span>
+            </a>
+            <div class="nav-right">
+                <a href="api_guide.html" class="nav-link" data-i18n="apiGuide">API 指南</a>
+                <span class="lang-switch" onclick="switchLang()" id="langBtn">EN</span>
+                <a href="https://chromewebstore.google.com/detail/eomfjfhjglppmkefbnhfmmdfciemlfie?utm_source=item-share-cb"
+                    class="btn-primary" target="_blank">
+                    <span data-i18n="install">免费安装</span>
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <header class="hero container">
+        <h1 data-i18n="heroTitle">浏览器里的 AI 共驾驶</h1>
+        <p data-i18n="heroDesc">集成 Gemini 与 OpenAI。不打断浏览流，一键总结、分析、对话。</p>
+        <div class="hero-btns">
+            <a href="https://chromewebstore.google.com/detail/eomfjfhjglppmkefbnhfmmdfciemlfie?utm_source=item-share-cb"
+                class="btn-primary" target="_blank">Chrome Store</a>
+            <a href="https://github.com/ty-hei/g-extension" class="btn-outline" target="_blank">GitHub</a>
+        </div>
+    </header>
+
+    <main class="scrolly-container">
+        <div class="text-col">
+            <div class="step active" data-index="0">
+                <span class="step-icon">�</span>
+                <h2 data-i18n="feature1Title">智能侧边栏对话</h2>
+                <p data-i18n="feature1Desc">无需离开当前页面，随时唤起 AI 助手。支持上下文对话、代码解释、翻译润色等多种任务。</p>
+            </div>
+            <div class="step" data-index="1">
+                <span class="step-icon">⚙️</span>
+                <h2 data-i18n="feature2Title">多模型自由切换</h2>
+                <p data-i18n="feature2Desc">支持 Google Gemini 和 OpenAI 兼容接口。在选项页轻松配置多个 API，根据任务需求灵活切换模型。</p>
+            </div>
+            <div class="step" data-index="2">
+                <span class="step-icon">📂</span>
+                <h2 data-i18n="feature3Title">对话存档与回溯</h2>
+                <p data-i18n="feature3Desc">话题结束了？一键“分割”并存档当前对话。随时在历史记录中回溯过往知识。</p>
+            </div>
+        </div>
+
+        <div class="visual-col">
+            <img id="feature-img" src="ZH_MAIN.jpg" alt="Feature Preview">
+        </div>
+    </main>
+
+    <footer>
+        <p>© 2025 Smart Sidebar Assistant. MIT License.</p>
+    </footer>
+
+    <script>
+        const i18n = {
+            zh: {
+                title: "智能侧边栏助手", install: "免费安装", heroTitle: "浏览器里的 AI 共驾驶", heroDesc: "集成 Gemini 与 OpenAI。不打断浏览流，一键总结、分析、对话。", apiGuide: "API 指南",
+                feature1Title: "智能侧边栏对话", feature1Desc: "无需离开当前页面，随时唤起 AI 助手。支持上下文对话、代码解释、翻译润色等多种任务。",
+                feature2Title: "多模型自由切换", feature2Desc: "支持 Google Gemini 和 OpenAI 兼容接口。在选项页轻松配置多个 API，根据任务需求灵活切换模型。",
+                feature3Title: "对话存档与回溯", feature3Desc: "话题结束了？一键“分割”并存档当前对话。随时在历史记录中回溯过往知识。",
+                langBtn: "EN"
+            },
+            en: {
+                title: "Smart Sidebar Assistant", install: "Install Free", heroTitle: "Your Browser AI Co-pilot", heroDesc: "Integrate Gemini & OpenAI. Summarize, analyze, and chat without breaking your flow.", apiGuide: "API Guide",
+                feature1Title: "Smart Sidebar Chat", feature1Desc: "Chat with AI without leaving your current page. Supports context-aware conversations, code explanation, translation, and more.",
+                feature2Title: "Multi-Model Support", feature2Desc: "Switch between Google Gemini and OpenAI compatible APIs. Configure multiple models in options and switch instantly.",
+                feature3Title: "Conversation Archive", feature3Desc: "Finished a topic? Split and archive the chat. Access your knowledge history anytime.",
+                langBtn: "中"
+            }
+        };
+
+        let currentLang = 'zh';
+        const steps = document.querySelectorAll('.step');
+        const featureImg = document.getElementById('feature-img');
+        const images = {
+            zh: ['ZH_MAIN.jpg', 'ZH-OP.jpg', 'ZH_AR.jpg'],
+            en: ['EN-MAIN.jpg', 'EN-OP.jpg', 'EN-AR.jpg']
+        };
+
+        // 滚动交互
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    steps.forEach(s => s.classList.remove('active'));
+                    entry.target.classList.add('active');
+
+                    const index = entry.target.getAttribute('data-index');
+                    if (featureImg && images[currentLang]) {
+                        featureImg.src = images[currentLang][index];
+                        featureImg.style.opacity = 0;
+                        setTimeout(() => featureImg.style.opacity = 1, 50);
+                    }
+                }
+            });
+        }, { threshold: 0.6 });
+
+        steps.forEach(step => observer.observe(step));
+
+        // 语言切换
+        window.switchLang = () => {
+            currentLang = currentLang === 'zh' ? 'en' : 'zh';
+            const data = i18n[currentLang];
+
+            // 更新静态文本
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if (data[key]) el.innerText = data[key];
+            });
+
+            // 更新当前图片
+            const activeStep = document.querySelector('.step.active');
+            if (activeStep) {
+                const index = activeStep.getAttribute('data-index');
+                featureImg.src = images[currentLang][index];
+            }
+        };
+    </script>
+</body>
+
+</html>

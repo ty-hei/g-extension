@@ -65,8 +65,11 @@ function updateContextMenu() {
   });
 }
 
-chrome.runtime.onInstalled.addListener(() => {
+chrome.runtime.onInstalled.addListener((details) => {
   loadSettings();
+  if (details.reason === 'install') {
+    chrome.tabs.create({ url: 'guide/index.html' });
+  }
 });
 
 // Listener for context menu clicks

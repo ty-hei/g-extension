@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html>
+
 <head>
   <title data-i18n="optionsTitle">智能侧边栏API设置</title>
   <meta charset="utf-8">
@@ -17,7 +18,7 @@
       --danger-gradient: linear-gradient(135deg, #ee0979 0%, #ff6a00 100%);
       --warning-gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
       --info-gradient: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-      
+
       --bg-gradient: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
       --card-bg: rgba(255, 255, 255, 0.95);
       --glass-border: rgba(255, 255, 255, 0.6);
@@ -25,16 +26,16 @@
       --text-secondary: #4a5568;
       --text-light: #718096;
       --border-color: rgba(226, 232, 240, 0.8);
-      
+
       --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.08);
       --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.1);
       --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12);
       --shadow-glow: 0 0 20px rgba(102, 126, 234, 0.3);
-      
+
       --radius-sm: 8px;
       --radius-md: 12px;
       --radius-lg: 16px;
-      
+
       --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
@@ -47,7 +48,7 @@
         --text-secondary: #e2e8f0;
         --text-light: #a0aec0;
         --border-color: rgba(74, 85, 104, 0.6);
-        
+
         --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
         --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
         --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
@@ -59,6 +60,7 @@
         opacity: 0;
         transform: translateY(30px);
       }
+
       to {
         opacity: 1;
         transform: translateY(0);
@@ -70,6 +72,7 @@
         opacity: 0;
         transform: translateX(-20px);
       }
+
       to {
         opacity: 1;
         transform: translateX(0);
@@ -167,6 +170,7 @@
     }
 
     @media (prefers-color-scheme: dark) {
+
       input[type="text"],
       input[type="url"],
       input[type="password"],
@@ -353,6 +357,7 @@
     }
   </style>
 </head>
+
 <body>
   <h1 data-i18n="optionsTitle">API 配置管理</h1>
 
@@ -392,9 +397,9 @@
     </div>
     <div class="form-group">
       <label for="modelName" data-i18n="modelNameLabel">模型名称:</label>
-      <input type="text" id="modelName" placeholder="例如: gemini-1.5-flash-latest 或 gpt-4o">
+      <input type="text" id="modelName" placeholder="例如: gemini-2.0-flash 或 gpt-4o">
     </div>
-    
+
     <button id="saveConfigButton" data-i18n="saveConfig">保存配置</button>
     <button type="button" id="testConfigButton" data-i18n="testConfig">测试连接</button>
     <button type="button" id="clearFormButton" data-i18n="clearForm">清空表单</button>
@@ -407,9 +412,16 @@
       <p data-i18n="noConfigs">暂无配置。请添加一个新配置。</p>
     </div>
   </div>
-  
+
+  <div style="text-align: center; margin-top: 40px; color: var(--text-light); font-size: 0.9em;">
+    <a href="https://privacy-policy.browser-plugin.heihaheihaha.com/" target="_blank"
+      style="color: var(--text-light); text-decoration: none; border-bottom: 1px dashed var(--text-light);">Privacy
+      Policy / 隐私政策</a>
+  </div>
+
   <p id="status"></p>
 
   <script src="options.js"></script>
 </body>
+
 </html>

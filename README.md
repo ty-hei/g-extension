@@ -40,6 +40,13 @@
 
 ### 🚀 Installation
 
+#### Method 1: Install from Chrome Web Store (Recommended)
+
+[**👉 Click here to install from the Chrome Web Store**](https://chromewebstore.google.com/detail/eomfjfhjglppmkefbnhfmmdfciemlfie?utm_source=item-share-cb)
+
+---
+#### Method 2: Load from Source (for Developers)
+
 1.  Clone or download this repository.
 2.  Open Chrome/Edge Extensions page (`chrome://extensions`).
 3.  Enable **Developer mode**.
@@ -106,6 +113,13 @@
 * **连接测试**: 配置页面新增“测试连接”功能，确保 API 设置正确。
 
 ### 🚀 安装与配置
+
+#### 方法一：从 Chrome 网上应用店安装（推荐）
+
+[**👉 点击此处从 Chrome 网上应用店安装**](https://chromewebstore.google.com/detail/eomfjfhjglppmkefbnhfmmdfciemlfie?utm_source=item-share-cb)
+
+---
+#### 方法二：源码加载（适合开发者）
 
 1.  下载或克隆本项目。
 2.  打开浏览器扩展管理页面 (`chrome://extensions`)。

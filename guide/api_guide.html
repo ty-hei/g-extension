@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API 密钥配置指南 - 智能侧边栏助手</title>
+    <style>
+        :root {
+            --primary-color: #007bff;
+            --primary-hover-color: #0056b3;
+            --secondary-color: #6c757d;
+            --background-color: #f8f9fa;
+            --content-bg-color: #ffffff;
+            --text-color: #343a40;
+            --light-text-color: #6c757d;
+            --border-color: #dee2e6;
+            --border-radius: 8px;
+            --shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            margin: 0;
+            padding: 40px 20px;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            line-height: 1.8;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: var(--content-bg-color);
+            padding: 40px;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+        }
+        h1, h2, h3 {
+            color: var(--text-color);
+            line-height: 1.3;
+        }
+        h1 {
+            text-align: center;
+            font-size: 2.5em;
+            margin-bottom: 20px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 20px;
+        }
+        h2 {
+            font-size: 2em;
+            margin-top: 50px;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        h3 {
+            font-size: 1.4em;
+            margin-top: 30px;
+            margin-bottom: 15px;
+        }
+        p, li {
+            font-size: 1.05em;
+            color: var(--light-text-color);
+        }
+        ol {
+            padding-left: 25px;
+        }
+        ol li {
+            margin-bottom: 15px;
+        }
+        a {
+            color: var(--primary-color);
+            text-decoration: none;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+        code {
+            background-color: #e9ecef;
+            padding: 3px 6px;
+            border-radius: 4px;
+            font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace;
+        }
+        .screenshot-placeholder {
+            width: 100%;
+            padding: 60px 20px;
+            background-color: #e9ecef;
+            border: 2px dashed var(--border-color);
+            border-radius: var(--border-radius);
+            text-align: center;
+            color: var(--light-text-color);
+            margin: 20px 0;
+            box-sizing: border-box;
+        }
+        .warning {
+            background-color: #fff3cd;
+            border-left: 5px solid #ffeeba;
+            padding: 15px 20px;
+            margin: 20px 0;
+            border-radius: var(--border-radius);
+        }
+        .warning p {
+            margin: 0;
+            color: #856404;
+        }
+        .back-link {
+            display: block;
+            text-align: center;
+            margin-top: 50px;
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>API 密钥配置指南</h1>
+        <p>为了使用智能侧边栏助手，您需要从 AI 服务提供商（如 Google 或 OpenAI）获取一个 API 密钥，并在插件中进行配置。本指南将引导您完成整个过程。</p>
+        
+        <div class="warning">
+            <p><strong>重要提示：</strong>您的 API 密钥非常敏感，请妥善保管，切勿泄露给他人。本插件会将密钥安全地存储在您的本地浏览器中，我们绝不会收集您的密钥。</p>
+        </div>
+
+        <h2 id="gemini">获取 Google Gemini API 密钥</h2>
+        <ol>
+            <li>访问 <a href="https://ai.google.dev/" target="_blank">Google AI for Developers</a> 官方网站。</li>
+            <li>点击页面上的“Get API key in Google AI Studio”按钮，使用您的 Google 账户登录。
+                <div class="screenshot-placeholder">[截图：显示 Google AI for Developers 页面和 "Get API key" 按钮]</div>
+            </li>
+            <li>登录后，您将进入 Google AI Studio。在左侧导航栏或主界面找到并点击 “Get API key” 选项。</li>
+            <li>在 API 密钥页面，点击 “Create API key in new project” 按钮来创建一个新的密钥。
+                <div class="screenshot-placeholder">[截图：显示 Google AI Studio 中创建新 API 密钥的按钮]</div>
+            </li>
+            <li>密钥生成后，点击它旁边的复制按钮。现在您已经获得了 Gemini API 密钥。</li>
+        </ol>
+
+        <h2 id="openai">获取 OpenAI 兼容 API 密钥</h2>
+        <p>此方法适用于 OpenAI 官方 API 以及任何与 OpenAI API 格式兼容的第三方服务。</p>
+        <ol>
+            <li>访问您选择的 AI 服务提供商网站（例如 <a href="https://platform.openai.com/" target="_blank">OpenAI Platform</a>）。</li>
+            <li>登录您的账户，并导航至 API Keys 管理页面。对于 OpenAI，您可以在登录后点击右上角头像，选择 “View API keys”。
+                <div class="screenshot-placeholder">[截图：显示 OpenAI Platform 仪表盘和 API Keys 菜单位置]</div>
+            </li>
+            <li>点击 “Create new secret key” 按钮。您可以为这个密钥起一个名字（例如 "Browser-Sidebar-Key"）以便于识别。</li>
+            <li>创建后，请立即复制您的密钥。请注意，出于安全原因，您将无法再次完整地看到这个密钥。
+                <div class="screenshot-placeholder">[截图：显示 OpenAI API 密钥创建和复制的界面]</div>
+            </li>
+        </ol>
+
+        <h2 id="configure-extension">在插件中配置密钥</h2>
+        <ol>
+            <li>在浏览器工具栏中，右键点击“智能侧边栏助手”的图标，然后选择“选项”。
+                <div class="screenshot-placeholder">[截图：显示在浏览器工具栏右键点击插件图标并选择“选项”]</div>
+            </li>
+            <li>在打开的“API 配置管理”页面中，填写表单：
+                <ul>
+                    <li><strong>配置名称:</strong> 给这个配置起一个易于识别的名字，如 “我的 Gemini 密钥”。</li>
+                    <li><strong>API 密钥:</strong> 粘贴您刚刚从服务商处复制的密钥。</li>
+                    <li><strong>API 类型:</strong> 根据您的密钥类型选择 "Google Gemini" 或 "OpenAI 兼容 API"。</li>
+                    <li><strong>API Endpoint URL:</strong> (仅当类型为 OpenAI 兼容时需要) 填写服务的 Endpoint 地址，例如 OpenAI 官方是 <code>https://api.openai.com/v1/chat/completions</code>。</li>
+                    <li><strong>模型名称:</strong> 填写您想使用的具体模型 ID，例如 <code>gemini-1.5-flash-latest</code> 或 <code>gpt-4o</code>。</li>
+                </ul>
+                <div class="screenshot-placeholder">[截图：显示插件的 API 配置页面，并高亮各个输入框]</div>
+            </li>
+            <li>点击“保存配置”。保存后，请确保您想使用的配置旁边显示为“(当前活动)”。如果不是，请点击该配置的“设为活动”按钮。</li>
+        </ol>
+        <p>恭喜！配置完成后，您就可以打开侧边栏开始使用了。</p>
+        <a href="index.html" class="back-link">&laquo; 返回主页</a>
+    </div>
+</body>
+</html>

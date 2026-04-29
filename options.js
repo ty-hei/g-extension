@@ -49,7 +49,7 @@ document.addEventListener('DOMContentLoaded', function() {
       configNamePlaceholder: "例如：我的 Gemini 主力 (留空将自动生成)",
       apiKeyPlaceholder: "粘贴您的 API 密钥",
       apiEndpointPlaceholder: "例如: https://api.openai.com/v1/chat/completions",
-      modelNamePlaceholder: "例如: gemini-1.5-flash-latest 或 gpt-4o",
+      modelNamePlaceholder: "例如: gemini-2.0-flash 或 gpt-4o",
       
       // Status Messages
       statusSaved: "配置保存成功！",
@@ -94,7 +94,7 @@ document.addEventListener('DOMContentLoaded', function() {
       configNamePlaceholder: "E.g., My Main Gemini (Leave empty to auto-generate)",
       apiKeyPlaceholder: "Paste your API Key here",
       apiEndpointPlaceholder: "E.g., https://api.openai.com/v1/chat/completions",
-      modelNamePlaceholder: "E.g., gemini-1.5-flash-latest or gpt-4o",
+      modelNamePlaceholder: "E.g., gemini-2.0-flash or gpt-4o",
       
       // Status Messages
       statusSaved: "Configuration saved successfully!",

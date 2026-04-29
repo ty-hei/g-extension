@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
+
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -13,14 +14,16 @@
       background-color: #f8f9fa;
       color: #212529;
     }
+
     .container {
       max-width: 800px;
       margin: 0 auto;
       background-color: #ffffff;
       padding: 25px 40px;
       border-radius: 8px;
-      box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
     }
+
     h1 {
       text-align: center;
       color: #343a40;
@@ -28,47 +31,59 @@
       padding-bottom: 15px;
       margin-top: 0;
     }
+
     h2 {
       color: #495057;
       margin-top: 30px;
       padding-bottom: 5px;
       border-bottom: 1px solid #e9ecef;
     }
+
     h3 {
       color: #495057;
       font-size: 1.1em;
       margin-top: 25px;
     }
-    p, li {
+
+    p,
+    li {
       color: #495057;
     }
+
     ul {
       padding-left: 20px;
     }
+
     strong {
       color: #343a40;
     }
+
     .policy-effective-date {
       text-align: center;
       color: #6c757d;
       margin-bottom: 25px;
       font-style: italic;
     }
-    .contact-info, .placeholder {
+
+    .contact-info,
+    .placeholder {
       background-color: #e9ecef;
       padding: 3px 6px;
       border-radius: 4px;
       font-family: "Courier New", Courier, monospace;
-      color: #c82333; /* Make placeholder stand out */
+      color: #c82333;
+      /* Make placeholder stand out */
     }
+
     .important-note {
-        background-color: #fff3cd;
-        border-left: 4px solid #ffeeba;
-        padding: 10px 15px;
-        margin: 20px 0;
+      background-color: #fff3cd;
+      border-left: 4px solid #ffeeba;
+      padding: 10px 15px;
+      margin: 20px 0;
     }
   </style>
 </head>
+
 <body>
 
   <div class="container">
@@ -76,16 +91,22 @@
     <p class="policy-effective-date">
       <strong>政策生效日期：</strong> 2025年6月10日
     </p>
+    <p class="policy-effective-date" style="margin-top: -15px;">
+      <a href="https://chromewebstore.google.com/detail/%E6%99%BA%E8%83%BD%E4%BE%A7%E8%BE%B9%E6%A0%8F-ai%EF%BC%9A%E7%BD%91%E9%A1%B5%E6%80%BB%E7%BB%93%E4%B8%8E%E5%AF%B9%E8%AF%9D%E5%8A%A9%E6%89%8B/eomfjfhjglppmkefbnhfmmdfciemlfie"
+        target="_blank">前往 Chrome 应用商店查看</a>
+    </p>
 
     <p>欢迎您使用“智能侧边栏助手”（以下简称“本插件”）。我们深知隐私对您的重要性，并会尽全力保护您的个人信息安全。本隐私政策旨在向您说明本插件如何收集、存储、使用和保护您的信息。</p>
     <p>请在使用本插件前，仔细阅读并充分理解本政策。</p>
 
     <h2>1. 我们收集的信息</h2>
-    <p class="important-note"><strong>重要提示：</strong>所有这些信息都存储在您的本地浏览器中，或由您直接提供给第三方 AI 服务。我们（插件开发者）没有任何服务器，也绝不会收集、查看或存储您的任何个人数据或 API 密钥。</p>
-    
+    <p class="important-note"><strong>重要提示：</strong>所有这些信息都存储在您的本地浏览器中，或由您直接提供给第三方 AI
+      服务。我们（插件开发者）没有任何服务器，也绝不会收集、查看或存储您的任何个人数据或 API 密钥。</p>
+
     <h3>用户配置信息</h3>
     <ul>
-      <li><strong>API 配置:</strong> 您在选项页面添加的 API 配置，包括配置名称、API 密钥、API 类型、API Endpoint URL（如果适用）以及模型名称。此信息存储在 <code>chrome.storage.sync</code> 中，以便在您登录同一 Google 账户的多个 Chrome 浏览器间同步。</li>
+      <li><strong>API 配置:</strong> 您在选项页面添加的 API 配置，包括配置名称、API 密钥、API 类型、API Endpoint URL（如果适用）以及模型名称。此信息存储在
+        <code>chrome.storage.sync</code> 中，以便在您登录同一 Google 账户的多个 Chrome 浏览器间同步。</li>
       <li><strong>活动配置ID:</strong> 用于标识当前正在使用的 API 配置。此信息存储在 <code>chrome.storage.sync</code> 中。</li>
     </ul>
 
@@ -106,7 +127,8 @@
     <h2>2. 我们如何使用您的信息</h2>
     <p>我们使用您的信息完全是为了实现插件的各项功能，具体如下：</p>
     <ul>
-      <li><strong>建立与 AI 服务的连接:</strong> 您的 API 密钥和配置信息被用来直接从您的浏览器向您选择的第三方 AI 服务（如 Google Gemini 或 OpenAI 兼容 API）发送请求。</li>
+      <li><strong>建立与 AI 服务的连接:</strong> 您的 API 密钥和配置信息被用来直接从您的浏览器向您选择的第三方 AI 服务（如 Google Gemini 或 OpenAI 兼容 API）发送请求。
+      </li>
       <li><strong>执行您的指令:</strong> 您输入的文字、选择的文本、请求总结的网页内容或图片 URL，会作为请求的一部分发送给 AI 服务，以获得您期望的回复（如总结、翻译、分析结果等）。</li>
       <li><strong>维护对话上下文:</strong> 对话历史被用于构建发送给 AI 的请求，使其能够理解之前的交流内容，从而实现连续对话。</li>
       <li><strong>提供个性化功能:</strong> Prompt 模板帮助您快速执行常用任务。存档和历史记录功能方便您回顾重要的信息。</li>
@@ -114,20 +136,23 @@
 
     <h2>3. 信息的存储与安全</h2>
     <ul>
-      <li><strong>本地存储:</strong> 您的对话历史、存档和 Prompt 模板都通过 <code>chrome.storage.local</code> API 存储在您的本地计算机上。这意味着除非您手动操作，否则这些信息不会离开您的设备。</li>
-      <li><strong>同步存储:</strong> 您的 API 配置信息通过 <code>chrome.storage.sync</code> API 存储。它会在您登录了同一 Google 账户的设备间同步，但同样受到 Google 的安全保护，开发者无法访问。</li>
-      <li><strong>安全措施:</strong> 我们采取了行业标准的做法来保护您的信息安全。例如，API 密钥在选项页的输入框中显示为密码（<code>type="password"</code>）。插件不包含任何可能将您的数据发送给开发者的代码。</li>
+      <li><strong>本地存储:</strong> 您的对话历史、存档和 Prompt 模板都通过 <code>chrome.storage.local</code> API
+        存储在您的本地计算机上。这意味着除非您手动操作，否则这些信息不会离开您的设备。</li>
+      <li><strong>同步存储:</strong> 您的 API 配置信息通过 <code>chrome.storage.sync</code> API 存储。它会在您登录了同一 Google 账户的设备间同步，但同样受到
+        Google 的安全保护，开发者无法访问。</li>
+      <li><strong>安全措施:</strong> 我们采取了行业标准的做法来保护您的信息安全。例如，API
+        密钥在选项页的输入框中显示为密码（<code>type="password"</code>）。插件不包含任何可能将您的数据发送给开发者的代码。</li>
     </ul>
 
     <h2>4. 信息共享与披露</h2>
     <p><strong>我们不会与任何第三方共享或出售您的个人信息。</strong></p>
     <p>本插件的核心工作模式是作为您与第三方 AI 服务之间的“桥梁”。当您使用本插件时，您需要知晓：</p>
     <ul>
-        <li>您请求处理的数据（如网页内容、您输入的文字等）以及您的部分配置信息（如 API 密钥），将由您的浏览器直接发送至您所配置的第三方 AI 服务提供商（例如 Google 或其他 OpenAI 兼容服务商）。</li>
-        <li>这些第三方服务提供商有其独立的隐私政策和数据处理惯例。我们强烈建议您在使用前查阅其相关的隐私政策。本插件不对任何第三方服务的数据处理行为负责。</li>
+      <li>您请求处理的数据（如网页内容、您输入的文字等）以及您的部分配置信息（如 API 密钥），将由您的浏览器直接发送至您所配置的第三方 AI 服务提供商（例如 Google 或其他 OpenAI 兼容服务商）。</li>
+      <li>这些第三方服务提供商有其独立的隐私政策和数据处理惯例。我们强烈建议您在使用前查阅其相关的隐私政策。本插件不对任何第三方服务的数据处理行为负责。</li>
     </ul>
     <p class="important-note"><strong>再次强调，您的任何数据都不会经过我们的服务器。</strong></p>
-    
+
     <h2>5. 您的权利与选择</h2>
     <p>您对您的信息拥有完全的控制权：</p>
     <ul>
@@ -156,4 +181,5 @@
   </div>
 
 </body>
+
 </html>
