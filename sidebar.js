@@ -16,6 +16,7 @@ let promptTemplates = [];
 let streamingMessageElement = null; // Track the DOM element being streamed to
 let isUserScrolling = false; // Track if user has manually scrolled
 let scrollCheckTimeout = null; // Debounce scroll detection
+let setupOnboardingVisible = false;
 let regexExtractionEnabled = false;
 let regexToolSource = {
     readabilityText: '',
@@ -62,6 +63,9 @@ const translations = {
         clear: "清除",
         send: "发送",
         inputPlaceholder: "输入消息或使用快捷方式...",
+        setupWelcomeTitle: "欢迎使用智能侧边栏助手",
+        setupWelcomeBody: "开始之前，请先添加一个 API 配置。配置完成后，你就可以总结网页、引用全文、处理选中文本并继续对话。",
+        setupWelcomeButton: "去设置 API Key",
         errorConfigIncomplete: '错误：当前活动的API配置不完整。请<a href="#" id="open-options-link">检查插件选项</a>。',
         configLoaded: '已加载配置',
         noConfigFound: '错误：未找到任何API配置或未设置活动配置。请<a href="#" id="open-options-link">在插件选项中添加并设置一个活动配置</a>。',
@@ -107,7 +111,7 @@ const translations = {
         prompt_summarize_page: `请使用中文，清晰、简洁且全面地总结以下网页内容。如果内容包含技术信息或代码，请解释其核心概念和用途。如果是一篇文章，请提炼主要观点和论据。总结应易于理解，并抓住内容的精髓。\n\n网页内容如下：\n"{text}"`,
         user_msg_about_quote: `关于以下引用内容：\n"{quote}"\n\n我的问题/指令是：\n"{msg}"`,
         moreActions: "更多操作",
-        sendShortcut: "Cmd+Enter 发送" // New translation
+        sendShortcut: "{shortcut} 发送" // New translation
     },
     en: {
         summarizePage: "Summarize Page",
@@ -142,6 +146,9 @@ const translations = {
         clear: "Clear",
         send: "Send",
         inputPlaceholder: "Type a message or use shortcuts...",
+        setupWelcomeTitle: "Welcome to Smart Sidebar Assistant",
+        setupWelcomeBody: "Add an API configuration to get started. After setup, you can summarize pages, quote full text, process selections, and continue conversations.",
+        setupWelcomeButton: "Go to Settings",
         errorConfigIncomplete: 'Error: Active API configuration incomplete. Please <a href="#" id="open-options-link">check options</a>.',
         configLoaded: 'Config Loaded',
         noConfigFound: 'Error: No active API configuration found. Please <a href="#" id="open-options-link">add one in options</a>.',
@@ -187,7 +194,7 @@ const translations = {
         prompt_summarize_page: `Please summarize the following webpage content clearly, concisely, and comprehensively in English. Focus on core information. If technical, explain core concepts. If an article, extract main arguments. Make it easy to understand.\n\nPage content:\n"{text}"`,
         user_msg_about_quote: `Regarding the following quote:\n"{quote}"\n\nMy question/instruction is:\n"{msg}"`,
         moreActions: "More Actions",
-        sendShortcut: "Cmd+Enter to Send" // New translation
+        sendShortcut: "{shortcut} to Send" // New translation
     }
 };
 
@@ -207,7 +214,8 @@ let chatOutput, chatInput, sendMessageButton, summarizePageButton, extractConten
     regexExtractButton, regexToolPanel, closeRegexToolButton,
     regexToolPattern, regexToolFlags, regexToolUseFullText,
     regexToolSourceTextarea, regexToolResult, regexToolStatus,
-    refreshRegexToolButton, designRegexButton, copyRegexResultButton; // Added variables for toggle
+    refreshRegexToolButton, designRegexButton, copyRegexResultButton,
+    sendShortcutHint; // Added variables for toggle
 
 
 // --- 初始化和API Key加载 ---
@@ -228,6 +236,7 @@ async function initialize() {
 
     chatInput = document.getElementById('chatInput');
     sendMessageButton = document.getElementById('sendMessageButton');
+    sendShortcutHint = document.getElementById('sendShortcutHint');
     summarizePageButton = document.getElementById('summarizePageButton');
     extractContentButton = document.getElementById('extractContentButton');
     selectedTextPreview = document.getElementById('selectedTextPreview');
@@ -296,6 +305,7 @@ async function initialize() {
         }
 
         if (activeConfig) {
+            setupOnboardingVisible = false;
             currentApiKey = activeConfig.apiKey;
             currentApiType = activeConfig.apiType;
             currentApiEndpoint = activeConfig.apiEndpoint || '';
@@ -310,7 +320,7 @@ async function initialize() {
                 enableInputs();
             }
         } else {
-            addMessageToChat({ role: 'model', parts: [{ text: t('noConfigFound') }], timestamp: Date.now() });
+            setupOnboardingVisible = true;
             disableInputs();
         }
 
@@ -337,6 +347,9 @@ async function initialize() {
                 sendMessageButton.click();
             }
         });
+        chatInput.addEventListener('input', resizeChatInput);
+        window.addEventListener('resize', resizeChatInput);
+        resizeChatInput();
     }
 
     if (summarizePageButton) summarizePageButton.addEventListener('click', handleSummarizeCurrentPage);
@@ -434,6 +447,7 @@ async function initialize() {
 
                 let configStatusMessage = t('configUpdated');
                 if (activeConfig) {
+                    setupOnboardingVisible = false;
                     currentApiKey = activeConfig.apiKey;
                     currentApiType = activeConfig.apiType;
                     currentApiEndpoint = activeConfig.apiEndpoint || '';
@@ -447,14 +461,19 @@ async function initialize() {
                         enableInputs();
                     }
                 } else {
+                    setupOnboardingVisible = true;
                     currentApiKey = null;
                     currentApiType = 'gemini';
                     currentApiEndpoint = '';
                     currentModelName = '';
-                    configStatusMessage = t('invalidConfig');
+                    configStatusMessage = '';
                     disableInputs();
                 }
-                addMessageToChat({ role: 'model', parts: [{ text: configStatusMessage }], timestamp: Date.now() });
+                if (configStatusMessage) {
+                    addMessageToChat({ role: 'model', parts: [{ text: configStatusMessage }], timestamp: Date.now() });
+                } else {
+                    renderCurrentChat();
+                }
             }
         }
         if (namespace === 'local') {
@@ -494,8 +513,31 @@ function updateInterfaceLanguage() {
     if (toggleMoreActionsButton) toggleMoreActionsButton.title = t('moreActions');
     if (regexToolPattern) regexToolPattern.placeholder = t('regexToolPatternLabel');
     if (regexToolFlags) regexToolFlags.placeholder = 'gim';
+    updateSendShortcutHint();
     updateArchivedChatsButtonCount();
     updateRegexToolPreview();
+    if (setupOnboardingVisible && currentChat.length === 0) {
+        renderCurrentChat();
+    }
+}
+
+function getSendShortcutLabel() {
+    const platform = navigator.userAgentData?.platform || navigator.platform || '';
+    return /mac|iphone|ipad|ipod/i.test(platform) ? 'Cmd+Enter' : 'Ctrl+Enter';
+}
+
+function updateSendShortcutHint() {
+    if (!sendShortcutHint) return;
+    sendShortcutHint.textContent = t('sendShortcut').replace('{shortcut}', getSendShortcutLabel());
+}
+
+function resizeChatInput() {
+    if (!chatInput) return;
+    const maxHeight = Math.max(72, Math.floor(window.innerHeight * 0.4));
+    chatInput.style.height = 'auto';
+    const nextHeight = Math.min(chatInput.scrollHeight, maxHeight);
+    chatInput.style.height = `${nextHeight}px`;
+    chatInput.style.overflowY = chatInput.scrollHeight > maxHeight ? 'auto' : 'hidden';
 }
 
 function hydrateRegexToolSettings(settings) {
@@ -691,6 +733,7 @@ function buildRegexDesignPrompt(pageText) {
 function fillRegexDesignPrompt() {
     const pageText = getRegexToolActiveSource() || currentSelectedText || '';
     chatInput.value = buildRegexDesignPrompt(pageText);
+    resizeChatInput();
     chatInput.focus();
     chatInput.scrollTop = 0;
     setRegexToolStatus(t('regexToolPromptReady'));
@@ -760,8 +803,9 @@ function applyPromptTemplate(template) {
         content = content.replace(/{{pageText}}/g, pageText);
     }
     chatInput.value = content;
+    resizeChatInput();
     chatInput.focus();
-    chatInput.scrollTop = chatInput.scrollHeight;
+    chatInput.scrollTop = 0;
 }
 
 function displaySelectedImagePreview(imageUrl) {
@@ -1034,6 +1078,7 @@ async function handleSendMessage() {
     addMessageToChat({ role: 'user', parts: [{ text: finalDisplayMessage }], timestamp: Date.now() });
 
     chatInput.value = '';
+    resizeChatInput();
     clearSelectedTextPreview();
     clearSelectedImagePreview();
 
@@ -1420,6 +1465,10 @@ function finalizeStreamingMessage() {
 function renderCurrentChat() {
     if (!chatOutput) return;
     chatOutput.innerHTML = '';
+    if (setupOnboardingVisible && currentChat.length === 0) {
+        renderSetupOnboardingCard();
+        return;
+    }
     currentChat.forEach((msg, index) => {
         const messageDiv = document.createElement('div');
         messageDiv.classList.add('message', msg.role === 'user' ? 'user' : 'ai');
@@ -1508,6 +1557,39 @@ function renderCurrentChat() {
     if (chatOutput.scrollHeight > chatOutput.clientHeight) {
         chatOutput.scrollTop = chatOutput.scrollHeight;
     }
+}
+
+function renderSetupOnboardingCard() {
+    const card = document.createElement('div');
+    card.classList.add('setup-onboarding-card');
+
+    const icon = document.createElement('div');
+    icon.classList.add('setup-onboarding-icon');
+    icon.textContent = '✦';
+
+    const content = document.createElement('div');
+    content.classList.add('setup-onboarding-content');
+
+    const title = document.createElement('h3');
+    title.textContent = t('setupWelcomeTitle');
+
+    const body = document.createElement('p');
+    body.textContent = t('setupWelcomeBody');
+
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.classList.add('setup-onboarding-button');
+    button.textContent = t('setupWelcomeButton');
+    button.addEventListener('click', () => {
+        chrome.runtime.openOptionsPage();
+    });
+
+    content.appendChild(title);
+    content.appendChild(body);
+    content.appendChild(button);
+    card.appendChild(icon);
+    card.appendChild(content);
+    chatOutput.appendChild(card);
 }
 
 function escapeHtml(unsafe) {

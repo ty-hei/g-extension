@@ -469,6 +469,65 @@ button#toggleMoreActionsButton.active {
   min-height: 200px;
 }
 
+.setup-onboarding-card {
+  display: flex;
+  gap: 14px;
+  padding: 18px;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--border-radius);
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.12) 0%, rgba(17, 153, 142, 0.1) 100%), var(--glass-bg);
+  color: var(--primary-text-color);
+  box-shadow: var(--glass-shadow);
+  animation: fadeIn var(--transition-medium);
+}
+
+.setup-onboarding-icon {
+  width: 44px;
+  height: 44px;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 14px;
+  background: var(--primary-button-bg);
+  color: var(--primary-button-text);
+  font-size: 1.4em;
+  font-weight: 700;
+}
+
+.setup-onboarding-content {
+  min-width: 0;
+}
+
+.setup-onboarding-content h3 {
+  margin: 0 0 8px;
+  color: var(--primary-text-color);
+  font-size: 1.05em;
+  line-height: 1.35;
+}
+
+.setup-onboarding-content p {
+  margin: 0 0 14px;
+  color: var(--secondary-text-color);
+  line-height: 1.6;
+}
+
+.setup-onboarding-button {
+  padding: 9px 12px;
+  border: none;
+  border-radius: var(--border-radius-sm);
+  background: var(--primary-button-bg);
+  color: var(--primary-button-text);
+  cursor: pointer;
+  font-weight: 650;
+  transition: all var(--transition-medium);
+}
+
+.setup-onboarding-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px var(--primary-button-hover-glow);
+}
+
 /* ========================================
    Messages with Animations
    ======================================== */
@@ -642,6 +701,7 @@ button#toggleMoreActionsButton.active {
 #chatInput {
   width: 100%;
   min-height: 60px;
+  max-height: 40vh;
   padding: 10px 12px;
   border: 2px solid var(--border-color);
   background: var(--input-bg-color);
@@ -653,7 +713,8 @@ button#toggleMoreActionsButton.active {
   font-family: inherit;
   font-size: 1em;
   line-height: 1.6;
-  resize: vertical;
+  resize: none;
+  overflow-y: hidden;
   transition: all var(--transition-medium);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
