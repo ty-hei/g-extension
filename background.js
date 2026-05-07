@@ -32,7 +32,7 @@ const translations = {
 };
 
 function t(key) {
-  return translations[currentLanguage][key] || translations['zh'][key] || key;
+  return (translations[currentLanguage] && translations[currentLanguage][key]) || translations['zh'][key] || key;
 }
 
 async function loadSettings() {
@@ -187,6 +187,32 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             type: "EXTRACT_CONTENT_ERROR",
             message: errMsg
           });
+        } else {
+          sendResponse({ success: true });
+        }
+      });
+    });
+    return true;
+  } else if (request.action === "extractActiveTabRegexSource") {
+    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+      if (!tabs || tabs.length === 0 || !tabs[0].id) {
+        sendResponse({ success: false, error: t('errorActiveTab') });
+        return;
+      }
+      const activeTabId = tabs[0].id;
+      const tabUrl = tabs[0].url || '';
+
+      if (tabUrl.startsWith('chrome://') || tabUrl.startsWith('about:') || tabUrl.startsWith('https://chrome.google.com/webstore')) {
+        sendResponse({ success: false, error: t('errorScriptFail') });
+        return;
+      }
+
+      chrome.scripting.executeScript({
+        target: { tabId: activeTabId },
+        files: ["libs/Readability.js", "regex_content_extractor.js"]
+      }, () => {
+        if (chrome.runtime.lastError) {
+          sendResponse({ success: false, error: t('errorInjectFail') + chrome.runtime.lastError.message });
         } else {
           sendResponse({ success: true });
         }

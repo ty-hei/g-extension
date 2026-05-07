@@ -25,11 +25,12 @@
 * **Link Analysis**: Drag and drop links to the preview window (bottom right) or use the context menu to summarize linked content without opening new tabs.
 * **Image Analysis**: Analyze images on webpages using Gemini's multimodal capabilities via the context menu.
 * **Full Text Extraction**: Extract and quote the full text of a webpage for further questioning.
+* **Advanced Regex Extraction**: Enable the sidebar regex extraction tool in Options to preview webpage text, tune JavaScript regular expressions, and copy matched content directly to the clipboard.
 
 #### 3. Efficient Workflow
 * **Prompt Templates**: Manage custom prompt templates. Use the `{{text}}` placeholder to automatically fill in selected text.
 * **Seamless Selection**: Select text on any webpage to automatically quote it in the sidebar for immediate processing.
-* **Chat Management**: Split conversations to archive current context and start fresh. Manage and view archived chats anytime.
+* **Chat Management**: Split conversations to archive current context and start fresh. Manage and view archived chats anytime in the refreshed archive workspace.
 * **User Experience**: Auto-clearing of quoted text after prompt application, and auto-generated configuration names.
 
 #### 4. Customization & Internationalization
@@ -58,6 +59,11 @@
 ### 📝 Changelog
 
 #### v1.3.1 (Current)
+* **🧰 Advanced Extraction Tools**:
+    * Added an optional sidebar Regex Extract Tool. Enable it in Options, preview page content, adjust a JavaScript regex, ask AI to design a regex from the tool, and copy matches to the clipboard.
+    * Kept “Extract Full Text” focused on quoting page text for chat, so regex extraction is a separate advanced workflow.
+* **🗂 Archive Refresh**:
+    * Redesigned the archive page with a cleaner two-pane workspace, archive count, polished message cards, and improved dark mode.
 * **🚀 Experience Upgrades**:
     * **Smoother Streaming**: Fixed the jitter issue during AI responses for a silky-smooth reading experience.
     * **Smart Auto-Scroll**: The chat window now intelligently scrolls with AI output but pauses automatically when you scroll up to read history.
@@ -99,11 +105,12 @@
 * **链接深度解析**: 拖拽链接至右下角预览窗口，或通过右键菜单，直接总结链接指向的内容。
 * **图片识别与分析**: 利用 Gemini 多模态能力分析网页图片。
 * **网页全文引用**: 一键提取全文作为引用，方便基于全文提问。
+* **高级正则提取**: 可在选项页启用侧边栏正则提取工具，预览网页文本、即时调整 JavaScript 正则表达式，并将匹配结果复制到剪贴板。
 
 #### 3. 高效工作流
 * **Prompt 模板**: 自定义快捷指令。支持 `{{text}}` 占位符，自动填充网页选中文本。
 * **无缝选文处理**: 网页选中文本自动进入侧边栏引用区域。
-* **对话管理**: 支持分割对话、对话存档与历史回溯。
+* **对话管理**: 支持分割对话、对话存档与历史回溯，并提供更清爽的存档工作区。
 * **体验优化**: 应用快捷指令后自动清除引用文本，配置名称支持自动生成。
 
 #### 4. 高度可定制化
@@ -132,6 +139,11 @@
 ### 📝 更新日志 (Changelog)
 
 #### v1.3.1 (Current)
+* **🧰 高级提取工具**:
+    * 新增可选的侧边栏正则提取工具。可在选项页启用，预览网页内容、调试 JavaScript 正则、调用 AI 辅助设计正则，并复制匹配结果。
+    * “提取全文作为引用”保持原有聊天引用用途，正则提取作为独立高级工作流提供。
+* **🗂 存档页焕新**:
+    * 重设计存档页面，提供更清爽的双栏工作区、存档数量显示、消息卡片与深色模式优化。
 * **🚀 体验升级**:
     * **流畅输出**: 彻底修复了 AI 回复时的抖动问题，带来丝般顺滑的阅读体验。
     * **智能滚屏**: 聊天窗口现在会智能跟随 AI 输出滚动，但当您向上查看历史时会自动暂停，互不打扰。

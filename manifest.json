@@ -51,6 +51,7 @@
         "prompts.js",
         "prompts.css",
         "page_content_extractor.js",
+        "regex_content_extractor.js",
         "libs/*",
         "images/*"
       ],

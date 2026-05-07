@@ -19,7 +19,42 @@
       <button id="splitChatButton" data-i18n="splitChat">分割当前对话</button>
       <button id="viewArchivedChatsButton" data-i18n="viewArchived">查看已存档对话</button>
       <button id="managePromptsButton" data-i18n="managePrompts">管理 Prompt</button>
-      <button id="privacyPolicyButton" data-i18n="privacyPolicy">隐私政策</button>
+      <button id="regexExtractButton" data-i18n="regexExtractTool" style="display: none;">正则提取工具</button>
+    </div>
+
+    <div id="regexToolPanel" class="regex-tool-panel" style="display: none;">
+      <div class="regex-tool-header">
+        <strong data-i18n="regexToolTitle">正则提取工具</strong>
+        <button id="closeRegexToolButton" type="button" data-i18n="close">关闭</button>
+      </div>
+      <label for="regexToolPattern" data-i18n="regexToolPatternLabel">正则表达式</label>
+      <textarea id="regexToolPattern" rows="3" spellcheck="false"></textarea>
+      <div class="regex-tool-row">
+        <div class="regex-flags-field">
+          <label for="regexToolFlags" data-i18n="regexToolFlagsLabel">标志</label>
+          <input id="regexToolFlags" type="text" placeholder="gim">
+        </div>
+        <label class="regex-checkbox">
+          <input id="regexToolUseFullText" type="checkbox">
+          <span data-i18n="regexToolUseFullText">完整可见文本</span>
+        </label>
+      </div>
+      <div id="regexToolStatus" class="regex-tool-status"></div>
+      <div class="regex-preview-grid">
+        <div class="regex-preview-pane">
+          <label for="regexToolSource" data-i18n="regexToolSourceLabel">网页内容</label>
+          <textarea id="regexToolSource" rows="5" readonly></textarea>
+        </div>
+        <div class="regex-preview-pane">
+          <label for="regexToolResult" data-i18n="regexToolResultLabel">匹配结果</label>
+          <textarea id="regexToolResult" rows="5" readonly></textarea>
+        </div>
+      </div>
+      <div class="regex-tool-actions">
+        <button id="refreshRegexToolButton" type="button" data-i18n="refreshRegexTool">刷新网页内容</button>
+        <button id="designRegexButton" type="button" data-i18n="designRegexWithAi">设计正则</button>
+        <button id="copyRegexResultButton" type="button" data-i18n="copyRegexResult">复制匹配结果</button>
+      </div>
     </div>
 
     <div class="prompt-shortcuts-container">

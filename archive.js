@@ -45,6 +45,7 @@ document.addEventListener('DOMContentLoaded', async function () {
     const archiveInputContainer = document.getElementById('archive-input-container');
     const archiveChatInput = document.getElementById('archive-chat-input');
     const archiveSendBtn = document.getElementById('archive-send-btn');
+    const archiveCount = document.getElementById('archive-count');
 
     // Detect when user manually scrolls in archive
     const archiveChatContainer = document.querySelector('.chat-detail-view');
@@ -100,7 +101,8 @@ document.addEventListener('DOMContentLoaded', async function () {
             continueChat: "继续对话",
             chatRestored: "对话已恢复到历史记录。请打开侧边栏继续聊天。",
             errorConfigIncomplete: "API配置不完整，请在设置中检查。",
-            thinking: "思考中..."
+            thinking: "思考中...",
+            archiveCount: "{count} 个对话"
         },
         en: {
             archiveTitle: "Archived Chats",
@@ -119,22 +121,33 @@ document.addEventListener('DOMContentLoaded', async function () {
             contentUnavailable: "Content unavailable",
             selectChatToView: "Select a chat to view details",
             continueChat: "Continue Chat",
-            chatRestored: "Chat restored to history. Open sidebar to continue."
+            chatRestored: "Chat restored to history. Open sidebar to continue.",
+            errorConfigIncomplete: "API configuration incomplete. Please check settings.",
+            thinking: "Thinking...",
+            archiveCount: "{count} conversations"
         }
     };
 
     function t(key) {
-        return translations[currentLanguage][key] || translations['zh'][key] || key;
+        return (translations[currentLanguage] && translations[currentLanguage][key]) || translations['zh'][key] || key;
     }
 
     function updateInterfaceLanguage() {
         document.querySelectorAll('[data-i18n]').forEach(el => {
             const key = el.getAttribute('data-i18n');
-            if (translations[currentLanguage][key]) {
-                el.textContent = translations[currentLanguage][key];
+            const translatedText = t(key);
+            if (translatedText !== key) {
+                el.textContent = translatedText;
             }
         });
         document.title = t('archiveTitle');
+        updateArchiveCount();
+    }
+
+    function updateArchiveCount() {
+        if (archiveCount) {
+            archiveCount.textContent = t('archiveCount').replace('{count}', archivedChats.length);
+        }
     }
 
     // Load language setting
@@ -175,9 +188,10 @@ document.addEventListener('DOMContentLoaded', async function () {
     function renderArchivedChatsList() {
         if (!archivedChatsListDiv) return;
         archivedChatsListDiv.innerHTML = '';
+        updateArchiveCount();
 
         if (archivedChats.length === 0) {
-            archivedChatsListDiv.innerHTML = `<div style="padding: 20px; text-align: center; color: var(--text-secondary);">${t('noArchives')}</div>`;
+            archivedChatsListDiv.innerHTML = `<div class="empty-list">${t('noArchives')}</div>`;
             renderEmptyState();
             return;
         }
@@ -460,9 +474,7 @@ document.addEventListener('DOMContentLoaded', async function () {
 
         const deleteBtn = document.createElement('button');
         deleteBtn.textContent = t('deleteFromArchive');
-        deleteBtn.classList.add('action-btn');
-        deleteBtn.style.color = '#ef4444';
-        deleteBtn.style.borderColor = '#ef4444';
+        deleteBtn.classList.add('action-btn', 'danger');
 
         deleteBtn.onclick = () => {
             if (confirm(t('confirmDeleteChat').replace('{title}', titleText))) {

@@ -23,6 +23,7 @@ Smart Sidebar Assistant is more than just a simple chat window; it's an efficien
 - **Deep Link Analysis**: No need to open a new tab. Simply drag a link to the preview window at the bottom right of the page, or use the context menu, to extract and summarize the content of the linked page.
 - **Image Recognition & Analysis**: Analyze any image on a webpage using the context menu, leveraging the multimodal capabilities of Gemini.
 - **Full-Page Quoting**: Extract the entire text content of the current page with one click and add it as a quote to the sidebar, allowing you to ask questions or process the full text.
+- **Advanced Regex Extraction**: Enable the optional sidebar regex tool in Options to preview webpage text, tune JavaScript regular expressions, ask AI to design a regex, and copy matched content directly to the clipboard.
 
 #### 3. Efficient Workflow
 - **Prompt Templates & Shortcuts**:
@@ -32,13 +33,14 @@ Smart Sidebar Assistant is more than just a simple chat window; it's an efficien
 - **Seamless Text Handling**: Select text on a webpage, and it will automatically appear in the sidebar's quote area. You can directly ask questions about the text or apply a prompt template with a single click.
 - **Conversation Management**:
     - **Split Conversation**: When switching topics, you can split the current conversation with one click, archiving it and starting a new session.
-    - **Archive Conversations**: Archive important conversations or individual Q&A pairs for future reference.
+    - **Archive Conversations**: Archive important conversations or individual Q&A pairs for future reference in a refreshed two-pane archive workspace.
     - **History Tracking**: All non-temporary conversations are recorded and can be managed and searched on the archive page.
 
 #### 4. High Customizability
 - **Flexible API Configuration**: Supports adding multiple API configurations (for Google Gemini or any OpenAI-compatible API) and setting any one as active at any time.
 - **Custom Models**: You can specify the exact model name for each API configuration (e.g., `gemini-1.5-flash-latest`, `gpt-4o`).
 - **OpenAI Compatibility**: For OpenAI-compatible APIs, you can customize the API Endpoint URL to connect to any service that adheres to the standard.
+- **Advanced Feature Toggle**: Keep the regex extraction tool hidden by default and enable it only when needed from the Options page.
 
 ## 🚀 Installation & Configuration
 
@@ -73,6 +75,7 @@ After installation, please proceed to **Step 2** to configure your API key.
 - **Summarize/Analyze**: Right-click anywhere on a webpage and use context menu items like "Summarize" or "Analyze Image".
 - **Process Text**: Select a piece of text on a webpage with your mouse, and it will automatically appear in the sidebar for processing.
 - **Summarize Links**: Drag a link from a webpage to the preview box that appears in the bottom-right corner, then click summarize.
+- **Extract with Regex**: Enable the regex tool in Options, open it from the sidebar's More Actions menu, refresh page content, adjust your pattern and flags, then copy the matched result.
 
 ## 🔧 Tech Stack
 - **Core**: HTML, CSS, JavaScript (ES6+)

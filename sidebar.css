@@ -262,6 +262,144 @@ button#toggleMoreActionsButton.active {
 }
 
 /* ========================================
+   Regex Extraction Tool
+   ======================================== */
+.regex-tool-panel {
+  padding: 12px;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--border-radius);
+  background: var(--chat-bg-color);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: var(--glass-shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 52vh;
+  overflow-y: auto;
+}
+
+.regex-tool-header,
+.regex-tool-actions,
+.regex-tool-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.regex-tool-header {
+  justify-content: space-between;
+}
+
+.regex-tool-header strong {
+  color: var(--secondary-text-color);
+  font-size: 0.95em;
+}
+
+.regex-tool-panel label {
+  color: var(--secondary-text-color);
+  font-size: 0.82em;
+  font-weight: 600;
+}
+
+.regex-tool-panel textarea,
+.regex-tool-panel input[type="text"] {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-sm);
+  background: var(--input-bg-color);
+  color: var(--primary-text-color);
+  font-family: inherit;
+  font-size: 0.9em;
+  padding: 8px 10px;
+  resize: vertical;
+}
+
+.regex-tool-panel textarea {
+  min-height: 72px;
+}
+
+.regex-preview-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+}
+
+.regex-preview-pane {
+  min-width: 0;
+}
+
+.regex-preview-pane label {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.regex-preview-pane textarea {
+  max-height: 150px;
+}
+
+#regexToolPattern,
+#regexToolSource,
+#regexToolResult {
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+}
+
+.regex-flags-field {
+  width: 88px;
+  flex: 0 0 auto;
+}
+
+.regex-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 20px;
+}
+
+.regex-checkbox input {
+  flex: 0 0 auto;
+}
+
+.regex-tool-status {
+  min-height: 18px;
+  color: var(--light-text-color);
+  font-size: 0.82em;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: var(--glass-bg);
+}
+
+.regex-tool-actions {
+  flex-wrap: wrap;
+}
+
+.regex-tool-actions button,
+#closeRegexToolButton {
+  padding: 6px 10px;
+  border: none;
+  border-radius: var(--border-radius-sm);
+  background: var(--control-button-bg);
+  color: var(--control-button-text);
+  cursor: pointer;
+  font-size: 0.82em;
+}
+
+#copyRegexResultButton {
+  background: var(--primary-button-bg);
+}
+
+#designRegexButton {
+  background: var(--success-gradient);
+}
+
+@media (min-width: 520px) {
+  .regex-preview-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+
+/* ========================================
    Prompt Shortcuts
    ======================================== */
 .prompt-shortcuts-container {

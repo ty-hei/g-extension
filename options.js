@@ -20,17 +20,32 @@ document.addEventListener('DOMContentLoaded', function() {
   // Language elements
   const languageSelect = document.getElementById('languageSelect');
   const saveGeneralSettingsButton = document.getElementById('saveGeneralSettingsButton');
+  const enableRegexExtractionCheckbox = document.getElementById('enableRegexExtraction');
+  const regexExtractionFields = document.getElementById('regexExtractionFields');
+  const regexPatternInput = document.getElementById('regexPattern');
+  const regexFlagsInput = document.getElementById('regexFlags');
+  const regexUseFullPageTextCheckbox = document.getElementById('regexUseFullPageText');
 
   let configurations = [];
   let activeConfigurationId = null;
   let currentLanguage = 'zh'; // Default
+  const DEFAULT_REGEX_PATTERN = '^\\s*(.+\\S)\\s*$';
+  const DEFAULT_REGEX_FLAGS = 'gm';
 
   const translations = {
     zh: {
       optionsTitle: "API 配置管理",
       generalSettingsTitle: "通用设置",
+      advancedSettingsTitle: "高级设置",
       languageLabel: "界面语言 / Interface Language:",
       saveGeneralSettings: "保存通用设置",
+      enableRegexExtractionLabel: "启用侧边栏正则提取工具",
+      enableRegexExtractionHelp: "启用后，侧边栏的更多操作中会显示正则提取工具，可预览网页内容、调整正则并复制匹配结果。",
+      regexPatternLabel: "正则表达式:",
+      regexPatternHelp: "如果包含捕获组，将只复制捕获组内容；否则复制完整匹配内容。",
+      regexFlagsLabel: "正则标志:",
+      regexUseFullPageTextLabel: "允许对网页完整可见文本执行正则匹配",
+      regexUseFullPageTextHelp: "默认只匹配 Readability 提取的正文。开启此项会读取页面完整可见文本，可能包含导航、评论、页脚等内容。",
       addEditConfigTitle: "添加/编辑配置",
       configNameLabel: "配置名称:",
       apiKeyLabel: "API 密钥:",
@@ -50,12 +65,18 @@ document.addEventListener('DOMContentLoaded', function() {
       apiKeyPlaceholder: "粘贴您的 API 密钥",
       apiEndpointPlaceholder: "例如: https://api.openai.com/v1/chat/completions",
       modelNamePlaceholder: "例如: gemini-2.0-flash 或 gpt-4o",
+      regexPatternPlaceholder: "例如: 标题[:：]\\s*(.+)",
+      regexFlagsPlaceholder: "例如: gim",
       
       // Status Messages
       statusSaved: "配置保存成功！",
       statusError: "错误: 保存配置失败。",
       generalSettingsSaved: "通用设置已保存，请重新打开侧边栏以生效。",
+      languageSavedRegexError: "界面语言已保存，但高级正则设置未保存: ",
       generalSettingsError: "保存失败: ",
+      regexPatternRequired: "启用正则表达式提取后，正则表达式不能为空。",
+      regexFlagsInvalid: "正则标志无效。仅支持 d g i m s u v y，且不能重复。",
+      regexPatternInvalid: "正则表达式无效: ",
       valConfigName: "API密钥和模型名称不能为空。", 
       valApiEndpoint: "OpenAI 兼容 API 需要填写 Endpoint URL。",
       confirmDelete: '确定要删除配置 "{name}" 吗？',
@@ -74,8 +95,16 @@ document.addEventListener('DOMContentLoaded', function() {
     en: {
       optionsTitle: "API Configuration",
       generalSettingsTitle: "General Settings",
+      advancedSettingsTitle: "Advanced Settings",
       languageLabel: "Interface Language:",
       saveGeneralSettings: "Save General Settings",
+      enableRegexExtractionLabel: "Enable sidebar regex extraction tool",
+      enableRegexExtractionHelp: "When enabled, the sidebar More Actions menu shows a regex tool for previewing page content, adjusting the regex, and copying matches.",
+      regexPatternLabel: "Regular expression:",
+      regexPatternHelp: "If the regex has capture groups, only captured content is copied. Otherwise, full matches are copied.",
+      regexFlagsLabel: "Regex flags:",
+      regexUseFullPageTextLabel: "Allow regex matching against the full visible page text",
+      regexUseFullPageTextHelp: "By default, matching uses Readability article text. This option reads the full visible page text, which can include navigation, comments, and footers.",
       addEditConfigTitle: "Add/Edit Configuration",
       configNameLabel: "Config Name:",
       apiKeyLabel: "API Key:",
@@ -95,12 +124,18 @@ document.addEventListener('DOMContentLoaded', function() {
       apiKeyPlaceholder: "Paste your API Key here",
       apiEndpointPlaceholder: "E.g., https://api.openai.com/v1/chat/completions",
       modelNamePlaceholder: "E.g., gemini-2.0-flash or gpt-4o",
+      regexPatternPlaceholder: "E.g., Title[:：]\\s*(.+)",
+      regexFlagsPlaceholder: "E.g., gim",
       
       // Status Messages
       statusSaved: "Configuration saved successfully!",
       statusError: "Error: Failed to save configuration.",
       generalSettingsSaved: "General settings saved. Please reopen sidebar to apply.",
+      languageSavedRegexError: "Interface language saved, but advanced regex settings were not saved: ",
       generalSettingsError: "Failed to save: ",
+      regexPatternRequired: "A regular expression is required when regex extraction is enabled.",
+      regexFlagsInvalid: "Invalid regex flags. Only d g i m s u v y are supported, with no duplicates.",
+      regexPatternInvalid: "Invalid regular expression: ",
       valConfigName: "API Key and Model Name are required.",
       valApiEndpoint: "Endpoint URL is required for OpenAI-compatible APIs.",
       confirmDelete: 'Are you sure you want to delete config "{name}"?',
@@ -119,15 +154,16 @@ document.addEventListener('DOMContentLoaded', function() {
   };
 
   function t(key) {
-    return translations[currentLanguage][key] || translations['zh'][key] || key;
+    return (translations[currentLanguage] && translations[currentLanguage][key]) || translations['zh'][key] || key;
   }
 
   function updateInterfaceLanguage() {
     // Update static text
     document.querySelectorAll('[data-i18n]').forEach(el => {
       const key = el.getAttribute('data-i18n');
-      if (translations[currentLanguage][key]) {
-        el.textContent = translations[currentLanguage][key];
+      const translatedText = t(key);
+      if (translatedText !== key) {
+        el.textContent = translatedText;
       }
     });
     document.title = t('optionsTitle');
@@ -137,6 +173,8 @@ document.addEventListener('DOMContentLoaded', function() {
     if (apiKeyInput) apiKeyInput.placeholder = t('apiKeyPlaceholder');
     if (apiEndpointInput) apiEndpointInput.placeholder = t('apiEndpointPlaceholder');
     if (modelNameInput) modelNameInput.placeholder = t('modelNamePlaceholder');
+    if (regexPatternInput) regexPatternInput.placeholder = t('regexPatternPlaceholder');
+    if (regexFlagsInput) regexFlagsInput.placeholder = t('regexFlagsPlaceholder');
 
     // Update dynamic button text based on state (Save vs Update)
     if (configIdInput.value) {
@@ -163,9 +201,89 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   apiTypeSelect.addEventListener('change', toggleApiEndpointField);
+  languageSelect.addEventListener('change', () => {
+    currentLanguage = languageSelect.value;
+    updateInterfaceLanguage();
+  });
+
+  function toggleRegexExtractionFields() {
+    if (!regexExtractionFields || !enableRegexExtractionCheckbox) return;
+    if (enableRegexExtractionCheckbox.checked) {
+      ensureDefaultRegexSettings();
+      regexExtractionFields.classList.remove('hidden');
+    } else {
+      regexExtractionFields.classList.add('hidden');
+    }
+  }
+
+  function ensureDefaultRegexSettings() {
+    if (regexPatternInput && !regexPatternInput.value.trim()) {
+      regexPatternInput.value = DEFAULT_REGEX_PATTERN;
+    }
+    if (regexFlagsInput && !regexFlagsInput.value.trim()) {
+      regexFlagsInput.value = DEFAULT_REGEX_FLAGS;
+    }
+  }
+
+  function normalizeRegexFlags(flags) {
+    const normalized = (flags || '').trim();
+    if (!/^[dgimsuvy]*$/.test(normalized) || new Set(normalized).size !== normalized.length) {
+      throw new Error(t('regexFlagsInvalid'));
+    }
+    return normalized;
+  }
+
+  function parseRegexPatternInput(patternInput) {
+    const rawPattern = (patternInput || '').trim();
+    const literalMatch = rawPattern.match(/^\/([\s\S]*)\/([dgimsuvy]*)$/);
+    if (!literalMatch) {
+      return { pattern: rawPattern, flags: '' };
+    }
+    return {
+      pattern: literalMatch[1],
+      flags: literalMatch[2] || ''
+    };
+  }
+
+  function validateRegexSettings() {
+    if (!enableRegexExtractionCheckbox?.checked) {
+      return { pattern: '', flags: '', useFullPageText: false };
+    }
+
+    ensureDefaultRegexSettings();
+    const parsedPattern = parseRegexPatternInput(regexPatternInput.value);
+    const pattern = parsedPattern.pattern;
+    const flags = normalizeRegexFlags(regexFlagsInput.value || parsedPattern.flags);
+
+    if (!pattern) {
+      throw new Error(t('regexPatternRequired'));
+    }
+
+    try {
+      new RegExp(pattern, flags);
+    } catch (e) {
+      throw new Error(t('regexPatternInvalid') + e.message);
+    }
+
+    return {
+      pattern,
+      flags,
+      useFullPageText: !!regexUseFullPageTextCheckbox?.checked
+    };
+  }
+
+  enableRegexExtractionCheckbox?.addEventListener('change', toggleRegexExtractionFields);
 
   async function loadConfigurations() {
-    const result = await chrome.storage.sync.get(['apiConfigurations', 'activeConfigurationId', 'interfaceLanguage']);
+    const result = await chrome.storage.sync.get([
+      'apiConfigurations',
+      'activeConfigurationId',
+      'interfaceLanguage',
+      'advancedRegexExtractionEnabled',
+      'advancedRegexPattern',
+      'advancedRegexFlags',
+      'advancedRegexUseFullPageText'
+    ]);
     configurations = result.apiConfigurations || [];
     activeConfigurationId = result.activeConfigurationId || null;
     
@@ -177,6 +295,20 @@ document.addEventListener('DOMContentLoaded', function() {
       languageSelect.value = 'zh'; // Default
       currentLanguage = 'zh';
     }
+
+    if (enableRegexExtractionCheckbox) {
+      enableRegexExtractionCheckbox.checked = !!result.advancedRegexExtractionEnabled;
+    }
+    if (regexPatternInput) {
+      regexPatternInput.value = result.advancedRegexPattern || '';
+    }
+    if (regexFlagsInput) {
+      regexFlagsInput.value = result.advancedRegexFlags || '';
+    }
+    if (regexUseFullPageTextCheckbox) {
+      regexUseFullPageTextCheckbox.checked = !!result.advancedRegexUseFullPageText;
+    }
+    toggleRegexExtractionFields();
 
     updateInterfaceLanguage(); // Apply translations immediately
   }
@@ -196,15 +328,27 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // Save General Settings (Language)
   saveGeneralSettingsButton.addEventListener('click', async () => {
+    currentLanguage = languageSelect.value; // Update local state immediately
+
     try {
-      currentLanguage = languageSelect.value; // Update local state immediately
+      const regexSettings = validateRegexSettings();
       await chrome.storage.sync.set({ 
-        interfaceLanguage: currentLanguage 
+        interfaceLanguage: currentLanguage,
+        advancedRegexExtractionEnabled: !!enableRegexExtractionCheckbox?.checked,
+        advancedRegexPattern: regexSettings.pattern,
+        advancedRegexFlags: regexSettings.flags,
+        advancedRegexUseFullPageText: regexSettings.useFullPageText
       });
       updateInterfaceLanguage(); // Apply changes to UI
       showStatus(t('generalSettingsSaved'), 'green');
     } catch (e) {
-      showStatus(t('generalSettingsError') + e.message, 'red');
+      try {
+        await chrome.storage.sync.set({ interfaceLanguage: currentLanguage });
+        updateInterfaceLanguage(); // Apply language even if advanced settings are invalid
+        showStatus(t('languageSavedRegexError') + e.message, 'orange');
+      } catch (storageError) {
+        showStatus(t('generalSettingsError') + storageError.message, 'red');
+      }
     }
   });
 

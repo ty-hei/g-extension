@@ -16,6 +16,16 @@ let promptTemplates = [];
 let streamingMessageElement = null; // Track the DOM element being streamed to
 let isUserScrolling = false; // Track if user has manually scrolled
 let scrollCheckTimeout = null; // Debounce scroll detection
+let regexExtractionEnabled = false;
+let regexToolSource = {
+    readabilityText: '',
+    fullText: '',
+    title: '',
+    url: ''
+};
+let regexToolSaveTimeout = null;
+const DEFAULT_REGEX_PATTERN = '^\\s*(.+\\S)\\s*$';
+const DEFAULT_REGEX_FLAGS = 'gm';
 
 // --- 翻译字典 ---
 const translations = {
@@ -25,6 +35,27 @@ const translations = {
         splitChat: "分割当前对话",
         viewArchived: "查看已存档对话",
         managePrompts: "管理 Prompt",
+        regexExtractTool: "正则提取工具",
+        regexToolTitle: "正则提取工具",
+        regexToolPatternLabel: "正则表达式",
+        regexToolFlagsLabel: "标志",
+        regexToolUseFullText: "完整可见文本",
+        regexToolSourceLabel: "网页内容",
+        regexToolResultLabel: "匹配结果",
+        refreshRegexTool: "刷新网页内容",
+        designRegexWithAi: "设计正则",
+        copyRegexResult: "复制匹配结果",
+        regexToolLoadPage: "正在读取网页内容...",
+        regexToolNoContent: "没有可用于正则匹配的网页内容。",
+        regexToolNoPattern: "输入正则表达式以查看匹配结果。",
+        regexToolNoMatch: "未匹配到任何内容。",
+        regexToolMatchCount: "匹配 {count} 项。",
+        regexToolCopied: "匹配结果已复制。",
+        regexToolCopyEmpty: "没有匹配结果可复制。",
+        regexToolPromptReady: "已生成正则设计请求，可补充目标后发送。",
+        regexToolInvalid: "正则表达式无效: ",
+        regexToolFlagsInvalid: "正则标志无效。仅支持 d g i m s u v y，且不能重复。",
+        close: "关闭",
         promptShortcuts: "Prompt 快捷方式:",
         clearImage: "清除图片",
         quoteContent: "引用内容:",
@@ -71,6 +102,7 @@ const translations = {
         apiCommErr: '与API通讯时发生错误。',
         describeImage: "请描述这张图片。",
         viewArchivedBtnCount: "查看已存档对话",
+        characters: "字符",
         prompt_summarize_link: `请使用中文，清晰、简洁且全面地总结以下链接 ({title}{url}) 的主要内容。专注于核心信息，忽略广告、导航栏、页脚等非主要内容。如果内容包含技术信息或代码，请解释其核心概念和用途。如果是一篇文章，请提炼主要观点和论据。总结应易于理解，并抓住内容的精髓。\n\n链接内容文本如下：\n"{text}"`,
         prompt_summarize_page: `请使用中文，清晰、简洁且全面地总结以下网页内容。如果内容包含技术信息或代码，请解释其核心概念和用途。如果是一篇文章，请提炼主要观点和论据。总结应易于理解，并抓住内容的精髓。\n\n网页内容如下：\n"{text}"`,
         user_msg_about_quote: `关于以下引用内容：\n"{quote}"\n\n我的问题/指令是：\n"{msg}"`,
@@ -83,6 +115,27 @@ const translations = {
         splitChat: "Split Chat",
         viewArchived: "Archived Chats",
         managePrompts: "Manage Prompts",
+        regexExtractTool: "Regex Extract Tool",
+        regexToolTitle: "Regex Extract Tool",
+        regexToolPatternLabel: "Regular expression",
+        regexToolFlagsLabel: "Flags",
+        regexToolUseFullText: "Full visible text",
+        regexToolSourceLabel: "Page content",
+        regexToolResultLabel: "Matches",
+        refreshRegexTool: "Refresh page content",
+        designRegexWithAi: "Design Regex",
+        copyRegexResult: "Copy matches",
+        regexToolLoadPage: "Reading page content...",
+        regexToolNoContent: "No page content is available for regex matching.",
+        regexToolNoPattern: "Enter a regular expression to preview matches.",
+        regexToolNoMatch: "No matches found.",
+        regexToolMatchCount: "{count} matches.",
+        regexToolCopied: "Matches copied.",
+        regexToolCopyEmpty: "No matches to copy.",
+        regexToolPromptReady: "Regex design request is ready. Add your target, then send.",
+        regexToolInvalid: "Invalid regular expression: ",
+        regexToolFlagsInvalid: "Invalid regex flags. Only d g i m s u v y are supported, with no duplicates.",
+        close: "Close",
         promptShortcuts: "Prompt Shortcuts:",
         clearImage: "Clear Image",
         quoteContent: "Quote:",
@@ -129,6 +182,7 @@ const translations = {
         apiCommErr: 'Error communicating with API.',
         describeImage: "Please describe this image.",
         viewArchivedBtnCount: "Archived Chats",
+        characters: "characters",
         prompt_summarize_link: `Please summarize the main content of the following link ({title}{url}) clearly, concisely, and comprehensively in English. Focus on core information, ignoring ads and nav bars. If technical, explain core concepts. If an article, extract main arguments. Make it easy to understand.\n\nLink text:\n"{text}"`,
         prompt_summarize_page: `Please summarize the following webpage content clearly, concisely, and comprehensively in English. Focus on core information. If technical, explain core concepts. If an article, extract main arguments. Make it easy to understand.\n\nPage content:\n"{text}"`,
         user_msg_about_quote: `Regarding the following quote:\n"{quote}"\n\nMy question/instruction is:\n"{msg}"`,
@@ -139,7 +193,7 @@ const translations = {
 
 // Helper to get text based on current language
 function t(key) {
-    return translations[currentLanguage][key] || translations['zh'][key] || key;
+    return (translations[currentLanguage] && translations[currentLanguage][key]) || translations['zh'][key] || key;
 }
 
 // --- DOM 元素获取 ---
@@ -149,7 +203,11 @@ let chatOutput, chatInput, sendMessageButton, summarizePageButton, extractConten
     clearAllHistoryButton,
     splitChatButton, viewArchivedChatsButton,
     managePromptsButton, promptShortcutsContainer,
-    toggleMoreActionsButton, moreActionsMenu; // Added variables for toggle
+    toggleMoreActionsButton, moreActionsMenu,
+    regexExtractButton, regexToolPanel, closeRegexToolButton,
+    regexToolPattern, regexToolFlags, regexToolUseFullText,
+    regexToolSourceTextarea, regexToolResult, regexToolStatus,
+    refreshRegexToolButton, designRegexButton, copyRegexResultButton; // Added variables for toggle
 
 
 // --- 初始化和API Key加载 ---
@@ -184,6 +242,18 @@ async function initialize() {
     promptShortcutsContainer = document.getElementById('promptShortcuts');
     toggleMoreActionsButton = document.getElementById('toggleMoreActionsButton');
     moreActionsMenu = document.getElementById('moreActionsMenu');
+    regexExtractButton = document.getElementById('regexExtractButton');
+    regexToolPanel = document.getElementById('regexToolPanel');
+    closeRegexToolButton = document.getElementById('closeRegexToolButton');
+    regexToolPattern = document.getElementById('regexToolPattern');
+    regexToolFlags = document.getElementById('regexToolFlags');
+    regexToolUseFullText = document.getElementById('regexToolUseFullText');
+    regexToolSourceTextarea = document.getElementById('regexToolSource');
+    regexToolResult = document.getElementById('regexToolResult');
+    regexToolStatus = document.getElementById('regexToolStatus');
+    refreshRegexToolButton = document.getElementById('refreshRegexToolButton');
+    designRegexButton = document.getElementById('designRegexButton');
+    copyRegexResultButton = document.getElementById('copyRegexResultButton');
 
 
     if (typeof marked !== 'object' || marked === null || typeof marked.parse !== 'function') {
@@ -195,7 +265,15 @@ async function initialize() {
 
     // Load Configuration and Language
     try {
-        const result = await chrome.storage.sync.get(['apiConfigurations', 'activeConfigurationId', 'interfaceLanguage']);
+        const result = await chrome.storage.sync.get([
+            'apiConfigurations',
+            'activeConfigurationId',
+            'interfaceLanguage',
+            'advancedRegexExtractionEnabled',
+            'advancedRegexPattern',
+            'advancedRegexFlags',
+            'advancedRegexUseFullPageText'
+        ]);
         const configs = result.apiConfigurations || [];
         const activeId = result.activeConfigurationId;
 
@@ -203,6 +281,9 @@ async function initialize() {
         if (result.interfaceLanguage) {
             currentLanguage = result.interfaceLanguage;
         }
+        regexExtractionEnabled = !!result.advancedRegexExtractionEnabled;
+        hydrateRegexToolSettings(result);
+        updateRegexToolVisibility();
         updateInterfaceLanguage(); // Apply translations to UI
 
         let activeConfig = null;
@@ -285,6 +366,19 @@ async function initialize() {
             chrome.tabs.create({ url: chrome.runtime.getURL('prompts.html') });
         });
     }
+    if (regexExtractButton) regexExtractButton.addEventListener('click', handleOpenRegexTool);
+    if (closeRegexToolButton) closeRegexToolButton.addEventListener('click', hideRegexToolPanel);
+    if (refreshRegexToolButton) refreshRegexToolButton.addEventListener('click', requestRegexToolSource);
+    if (designRegexButton) designRegexButton.addEventListener('click', fillRegexDesignPrompt);
+    if (copyRegexResultButton) copyRegexResultButton.addEventListener('click', copyRegexToolResult);
+    [regexToolPattern, regexToolFlags, regexToolUseFullText].forEach(el => {
+        if (!el) return;
+        const eventName = el.type === 'checkbox' ? 'change' : 'input';
+        el.addEventListener(eventName, () => {
+            updateRegexToolPreview();
+            saveRegexToolSettingsDebounced();
+        });
+    });
 
     // New Toggle Logic
     if (toggleMoreActionsButton && moreActionsMenu) {
@@ -305,6 +399,24 @@ async function initialize() {
                 currentLanguage = changes.interfaceLanguage.newValue || 'zh';
                 updateInterfaceLanguage();
                 // Also reload prompts just in case defaults change (though defaults are currently hardcoded in prompt loader logic)
+            }
+
+            if (
+                changes.advancedRegexExtractionEnabled ||
+                changes.advancedRegexPattern ||
+                changes.advancedRegexFlags ||
+                changes.advancedRegexUseFullPageText
+            ) {
+                const result = await chrome.storage.sync.get([
+                    'advancedRegexExtractionEnabled',
+                    'advancedRegexPattern',
+                    'advancedRegexFlags',
+                    'advancedRegexUseFullPageText'
+                ]);
+                regexExtractionEnabled = !!result.advancedRegexExtractionEnabled;
+                hydrateRegexToolSettings(result);
+                updateRegexToolVisibility();
+                updateRegexToolPreview();
             }
 
             if (changes.apiConfigurations || changes.activeConfigurationId) {
@@ -365,32 +477,235 @@ function updateInterfaceLanguage() {
     const elements = document.querySelectorAll('[data-i18n]');
     elements.forEach(el => {
         const key = el.getAttribute('data-i18n');
-        if (translations[currentLanguage][key]) {
+        const translatedText = t(key);
+        if (translatedText !== key) {
             // Preserve icons/structure if needed, for simple text buttons just replace
             if (el.childNodes.length === 1 && el.childNodes[0].nodeType === 3) {
-                el.textContent = translations[currentLanguage][key];
+                el.textContent = translatedText;
             } else {
                 // For more complex structure, might need specific handling, but textContent is usually fine for buttons
                 // Special handling for specific IDs if they contain icons not in translation string
-                el.textContent = translations[currentLanguage][key];
+                el.textContent = translatedText;
             }
         }
     });
 
     if (chatInput) chatInput.placeholder = t('inputPlaceholder');
     if (toggleMoreActionsButton) toggleMoreActionsButton.title = t('moreActions');
+    if (regexToolPattern) regexToolPattern.placeholder = t('regexToolPatternLabel');
+    if (regexToolFlags) regexToolFlags.placeholder = 'gim';
     updateArchivedChatsButtonCount();
+    updateRegexToolPreview();
+}
+
+function hydrateRegexToolSettings(settings) {
+    if (regexToolPattern && typeof settings.advancedRegexPattern === 'string') {
+        regexToolPattern.value = settings.advancedRegexPattern || DEFAULT_REGEX_PATTERN;
+    }
+    if (regexToolFlags && typeof settings.advancedRegexFlags === 'string') {
+        regexToolFlags.value = settings.advancedRegexFlags || DEFAULT_REGEX_FLAGS;
+    }
+    if (regexToolUseFullText && typeof settings.advancedRegexUseFullPageText !== 'undefined') {
+        regexToolUseFullText.checked = !!settings.advancedRegexUseFullPageText;
+    }
+    if (regexExtractionEnabled) {
+        if (regexToolPattern && !regexToolPattern.value.trim()) {
+            regexToolPattern.value = DEFAULT_REGEX_PATTERN;
+        }
+        if (regexToolFlags && !regexToolFlags.value.trim()) {
+            regexToolFlags.value = DEFAULT_REGEX_FLAGS;
+        }
+    }
+}
+
+function updateRegexToolVisibility() {
+    if (regexExtractButton) {
+        regexExtractButton.style.display = regexExtractionEnabled ? '' : 'none';
+    }
+    if (!regexExtractionEnabled) {
+        hideRegexToolPanel();
+    }
+}
+
+function showRegexToolPanel() {
+    if (regexToolPanel) {
+        regexToolPanel.style.display = 'flex';
+    }
+}
+
+function hideRegexToolPanel() {
+    if (regexToolPanel) {
+        regexToolPanel.style.display = 'none';
+    }
+}
+
+function setRegexToolStatus(message, isError = false) {
+    if (!regexToolStatus) return;
+    regexToolStatus.textContent = message || '';
+    regexToolStatus.style.color = isError ? '#d9534f' : '';
+}
+
+function getRegexToolActiveSource() {
+    if (regexToolUseFullText?.checked) {
+        return regexToolSource.fullText || regexToolSource.readabilityText || '';
+    }
+    return regexToolSource.readabilityText || regexToolSource.fullText || '';
+}
+
+function parseRegexToolPattern(patternInput) {
+    const rawPattern = (patternInput || '').trim();
+    const literalMatch = rawPattern.match(/^\/([\s\S]*)\/([dgimsuvy]*)$/);
+    if (!literalMatch) {
+        return { pattern: rawPattern, flags: '' };
+    }
+    return {
+        pattern: literalMatch[1],
+        flags: literalMatch[2] || ''
+    };
+}
+
+function normalizeRegexToolFlags(flags) {
+    const normalized = (flags || '').trim();
+    if (!/^[dgimsuvy]*$/.test(normalized) || new Set(normalized).size !== normalized.length) {
+        throw new Error(t('regexToolFlagsInvalid'));
+    }
+    return normalized.includes('g') ? normalized : normalized + 'g';
+}
+
+function getRegexToolMatches(sourceText, patternInput, flagsInput) {
+    const parsed = parseRegexToolPattern(patternInput);
+    if (!parsed.pattern) return [];
+
+    const flags = normalizeRegexToolFlags(flagsInput || parsed.flags);
+    const regex = new RegExp(parsed.pattern, flags);
+    const matches = [];
+    const maxMatches = 1000;
+    let match;
+
+    while ((match = regex.exec(sourceText)) !== null) {
+        const captures = match.slice(1).filter(value => typeof value === 'string' && value.length > 0);
+        if (captures.length > 0) {
+            matches.push(...captures);
+        } else if (match[0]) {
+            matches.push(match[0]);
+        }
+        if (match[0] === '') {
+            regex.lastIndex += 1;
+        }
+        if (matches.length >= maxMatches) {
+            break;
+        }
+    }
+
+    return matches;
+}
+
+function updateRegexToolPreview() {
+    if (!regexToolSourceTextarea || !regexToolResult) return;
+
+    const sourceText = getRegexToolActiveSource();
+    regexToolSourceTextarea.value = sourceText;
+
+    if (!sourceText) {
+        regexToolResult.value = '';
+        setRegexToolStatus(t('regexToolNoContent'));
+        return;
+    }
+
+    if (!regexToolPattern?.value.trim()) {
+        regexToolResult.value = '';
+        setRegexToolStatus(t('regexToolNoPattern'));
+        return;
+    }
+
+    try {
+        const matches = getRegexToolMatches(sourceText, regexToolPattern.value, regexToolFlags?.value || '');
+        regexToolResult.value = matches.join('\n\n---\n\n');
+        setRegexToolStatus(matches.length > 0 ? t('regexToolMatchCount').replace('{count}', matches.length) : t('regexToolNoMatch'));
+    } catch (e) {
+        regexToolResult.value = '';
+        setRegexToolStatus(t('regexToolInvalid') + e.message, true);
+    }
+}
+
+function saveRegexToolSettingsDebounced() {
+    clearTimeout(regexToolSaveTimeout);
+    regexToolSaveTimeout = setTimeout(() => {
+        chrome.storage.sync.set({
+            advancedRegexPattern: parseRegexToolPattern(regexToolPattern?.value || '').pattern,
+            advancedRegexFlags: regexToolFlags?.value.trim() || parseRegexToolPattern(regexToolPattern?.value || '').flags,
+            advancedRegexUseFullPageText: !!regexToolUseFullText?.checked
+        }).catch(e => console.warn('Failed to save regex tool settings:', e));
+    }, 400);
+}
+
+function handleOpenRegexTool() {
+    if (!regexExtractionEnabled) return;
+    if (regexToolPattern && !regexToolPattern.value.trim()) {
+        regexToolPattern.value = DEFAULT_REGEX_PATTERN;
+    }
+    if (regexToolFlags && !regexToolFlags.value.trim()) {
+        regexToolFlags.value = DEFAULT_REGEX_FLAGS;
+    }
+    saveRegexToolSettingsDebounced();
+    showRegexToolPanel();
+    if (!getRegexToolActiveSource()) {
+        requestRegexToolSource();
+    } else {
+        updateRegexToolPreview();
+    }
+}
+
+function requestRegexToolSource() {
+    showRegexToolPanel();
+    setRegexToolStatus(t('regexToolLoadPage'));
+    chrome.runtime.sendMessage({ action: "extractActiveTabRegexSource" }, (response) => {
+        if (chrome.runtime.lastError || (response && !response.success)) {
+            const errorMessage = response?.error || chrome.runtime.lastError?.message || "Unknown";
+            setRegexToolStatus(`${t('extractFail')}: ${errorMessage}`, true);
+        }
+    });
+}
+
+function copyRegexToolResult() {
+    const text = regexToolResult?.value || '';
+    if (!text.trim()) {
+        setRegexToolStatus(t('regexToolCopyEmpty'), true);
+        return;
+    }
+
+    navigator.clipboard.writeText(text).then(() => {
+        setRegexToolStatus(t('regexToolCopied'));
+    }).catch(err => {
+        setRegexToolStatus(`${t('extractFail')}: ${err.message}`, true);
+    });
+}
+
+function buildRegexDesignPrompt(pageText) {
+    const zhPrompt = `请根据以下网页文本，帮我设计一个 JavaScript 正则表达式，用于提取：[请在这里描述要提取的内容]\n\n要求：\n1. 返回可直接粘贴到插件正则提取工具中的正则表达式。\n2. 如果适合，请使用捕获组，让插件只复制目标内容。\n3. 简要说明建议使用的 flags。\n4. 给出 1-2 个可能的边界情况。\n\n网页文本：\n${pageText}`;
+    const enPrompt = `Please design a JavaScript regular expression from the page text below to extract: [describe what to extract here]\n\nRequirements:\n1. Return a regex that can be pasted directly into the sidebar regex extraction tool.\n2. Use capture groups when appropriate so the tool copies only the target content.\n3. Briefly explain the recommended flags.\n4. Include 1-2 possible edge cases.\n\nPage text:\n${pageText}`;
+
+    return currentLanguage === 'en' ? enPrompt : zhPrompt;
+}
+
+function fillRegexDesignPrompt() {
+    const pageText = getRegexToolActiveSource() || currentSelectedText || '';
+    chatInput.value = buildRegexDesignPrompt(pageText);
+    chatInput.focus();
+    chatInput.scrollTop = 0;
+    setRegexToolStatus(t('regexToolPromptReady'));
 }
 
 async function loadPromptTemplates() {
     const result = await chrome.storage.local.get(['promptTemplates']);
+    const removedPresetIds = new Set(['preset-design-regex']);
     const presets = [
         { id: 'preset-translate', name: '翻译/Translate', content: '请将以下文本翻译成[目标语言] (Translate to [Language])：\n\n{{text}}', isPreset: true },
         { id: 'preset-summarize', name: '总结/Summarize', content: '请总结以下文本的主要内容 (Summarize this)：\n\n{{text}}', isPreset: true }
     ];
 
     if (result.promptTemplates && result.promptTemplates.length > 0) {
-        promptTemplates = result.promptTemplates;
+        promptTemplates = result.promptTemplates.filter(p => !(p.isPreset && removedPresetIds.has(p.id)));
         presets.forEach(presetDef => {
             const existing = promptTemplates.find(p => p.id === presetDef.id);
             if (!existing) {
@@ -408,6 +723,7 @@ async function loadPromptTemplates() {
             p.isPreset = false;
         }
     });
+    await chrome.storage.local.set({ promptTemplates: promptTemplates });
 
     renderPromptShortcuts();
 }
@@ -438,6 +754,10 @@ function applyPromptTemplate(template) {
         content = content.replace(/{{text}}/g, currentSelectedText);
         // Clear the selected text preview because it has been consumed by the prompt
         clearSelectedTextPreview();
+    }
+    if (content.includes("{{pageText}}")) {
+        const pageText = getRegexToolActiveSource() || currentSelectedText || '';
+        content = content.replace(/{{pageText}}/g, pageText);
     }
     chatInput.value = content;
     chatInput.focus();
@@ -580,6 +900,25 @@ function handleRuntimeMessages(request, sender, sendResponse) {
                 setTimeout(() => removeMessageByContentCheck(msg => msg.timestamp === successMsg.timestamp), 6000);
             }
             sendResponse({ status: "Page content processed" });
+            break;
+
+        case 'regexPageContentExtracted':
+            if (request.error) {
+                setRegexToolStatus(`${t('extractFail')}: ${request.error}`, true);
+            } else {
+                regexToolSource = {
+                    readabilityText: request.readabilityText || '',
+                    fullText: request.fullText || '',
+                    title: request.title || '',
+                    url: request.url || ''
+                };
+                updateRegexToolPreview();
+                if (request.warning) {
+                    const currentStatus = regexToolStatus?.textContent || '';
+                    setRegexToolStatus(currentStatus ? `${currentStatus} ${request.warning}` : request.warning);
+                }
+            }
+            sendResponse({ status: "Regex page content processed" });
             break;
 
         case 'EXTRACT_CONTENT_ERROR':
