@@ -17,6 +17,9 @@ let streamingMessageElement = null; // Track the DOM element being streamed to
 let isUserScrolling = false; // Track if user has manually scrolled
 let scrollCheckTimeout = null; // Debounce scroll detection
 let setupOnboardingVisible = false;
+let setupOnboardingState = null;
+let currentActiveConfigId = null;
+let currentActiveConfigName = '';
 let regexExtractionEnabled = false;
 let regexToolSource = {
     readabilityText: '',
@@ -66,6 +69,13 @@ const translations = {
         setupWelcomeTitle: "欢迎使用智能侧边栏助手",
         setupWelcomeBody: "开始之前，请先添加一个 API 配置。配置完成后，你就可以总结网页、引用全文、处理选中文本并继续对话。",
         setupWelcomeButton: "去设置 API Key",
+        setupIncompleteTitle: "补全当前 API 配置",
+        setupIncompleteBody: "当前活动配置“{name}”缺少：{missing}。补全后侧边栏会自动恢复可用。",
+        setupIncompleteButton: "修复此配置",
+        setupUnnamedConfig: "未命名配置",
+        missingApiKey: "API 密钥",
+        missingModelName: "模型名称",
+        missingApiEndpoint: "API Endpoint URL",
         errorConfigIncomplete: '错误：当前活动的API配置不完整。请<a href="#" id="open-options-link">检查插件选项</a>。',
         configLoaded: '已加载配置',
         noConfigFound: '错误：未找到任何API配置或未设置活动配置。请<a href="#" id="open-options-link">在插件选项中添加并设置一个活动配置</a>。',
@@ -149,6 +159,13 @@ const translations = {
         setupWelcomeTitle: "Welcome to Smart Sidebar Assistant",
         setupWelcomeBody: "Add an API configuration to get started. After setup, you can summarize pages, quote full text, process selections, and continue conversations.",
         setupWelcomeButton: "Go to Settings",
+        setupIncompleteTitle: "Complete Your API Configuration",
+        setupIncompleteBody: 'The active configuration "{name}" is missing: {missing}. Once you fill it in, the sidebar will be ready again.',
+        setupIncompleteButton: "Fix This Config",
+        setupUnnamedConfig: "Unnamed config",
+        missingApiKey: "API key",
+        missingModelName: "model name",
+        missingApiEndpoint: "API Endpoint URL",
         errorConfigIncomplete: 'Error: Active API configuration incomplete. Please <a href="#" id="open-options-link">check options</a>.',
         configLoaded: 'Config Loaded',
         noConfigFound: 'Error: No active API configuration found. Please <a href="#" id="open-options-link">add one in options</a>.',
@@ -201,6 +218,93 @@ const translations = {
 // Helper to get text based on current language
 function t(key) {
     return (translations[currentLanguage] && translations[currentLanguage][key]) || translations['zh'][key] || key;
+}
+
+function getConfigMissingFieldKeys(config) {
+    if (!config) return [];
+
+    const missingKeys = [];
+    if (!String(config.apiKey || '').trim()) {
+        missingKeys.push('missingApiKey');
+    }
+    if (!String(config.modelName || '').trim()) {
+        missingKeys.push('missingModelName');
+    }
+    if (config.apiType === 'openai' && !String(config.apiEndpoint || '').trim()) {
+        missingKeys.push('missingApiEndpoint');
+    }
+    return missingKeys;
+}
+
+function isCurrentApiConfigComplete() {
+    return !!String(currentApiKey || '').trim()
+        && !!String(currentModelName || '').trim()
+        && (currentApiType !== 'openai' || !!String(currentApiEndpoint || '').trim());
+}
+
+function setActiveApiConfig(config) {
+    currentActiveConfigId = config?.id || null;
+    currentActiveConfigName = config?.configName || '';
+    currentApiKey = config?.apiKey || '';
+    currentApiType = config?.apiType || 'gemini';
+    currentApiEndpoint = config?.apiEndpoint || '';
+    currentModelName = config?.modelName || '';
+}
+
+function showSetupOnboardingForMissingConfig() {
+    setupOnboardingVisible = true;
+    setupOnboardingState = { type: 'new' };
+    currentActiveConfigId = null;
+    currentActiveConfigName = '';
+    currentApiKey = null;
+    currentApiType = 'gemini';
+    currentApiEndpoint = '';
+    currentModelName = '';
+    disableInputs();
+    renderCurrentChat();
+}
+
+function showSetupOnboardingForIncompleteConfig(config, missingKeys = getConfigMissingFieldKeys(config)) {
+    setActiveApiConfig(config);
+    setupOnboardingVisible = true;
+    setupOnboardingState = {
+        type: 'incomplete',
+        configId: config?.id || null,
+        configName: config?.configName || '',
+        missingKeys
+    };
+    disableInputs();
+    renderCurrentChat();
+}
+
+function hideSetupOnboarding() {
+    setupOnboardingVisible = false;
+    setupOnboardingState = null;
+}
+
+function openApiConfigOptions(configId = currentActiveConfigId) {
+    const path = configId
+        ? `options.html?editConfigId=${encodeURIComponent(configId)}#configFormContainer`
+        : 'options.html#configFormContainer';
+    chrome.tabs.create({ url: chrome.runtime.getURL(path) });
+}
+
+function revealCurrentConfigSetupCard() {
+    if (isCurrentApiConfigComplete()) {
+        return;
+    }
+    if (!currentActiveConfigId) {
+        showSetupOnboardingForMissingConfig();
+    } else {
+        showSetupOnboardingForIncompleteConfig({
+            id: currentActiveConfigId,
+            configName: currentActiveConfigName,
+            apiKey: currentApiKey,
+            apiType: currentApiType,
+            apiEndpoint: currentApiEndpoint,
+            modelName: currentModelName
+        });
+    }
 }
 
 // --- DOM 元素获取 ---
@@ -305,23 +409,19 @@ async function initialize() {
         }
 
         if (activeConfig) {
-            setupOnboardingVisible = false;
-            currentApiKey = activeConfig.apiKey;
-            currentApiType = activeConfig.apiType;
-            currentApiEndpoint = activeConfig.apiEndpoint || '';
-            currentModelName = activeConfig.modelName;
+            setActiveApiConfig(activeConfig);
+            const missingKeys = getConfigMissingFieldKeys(activeConfig);
 
-            if (!currentApiKey || !currentModelName || (currentApiType === 'openai' && !currentApiEndpoint)) {
-                addMessageToChat({ role: 'model', parts: [{ text: t('errorConfigIncomplete') }], timestamp: Date.now() });
-                disableInputs();
+            if (missingKeys.length > 0) {
+                showSetupOnboardingForIncompleteConfig(activeConfig, missingKeys);
             } else {
+                hideSetupOnboarding();
                 const tempStatusMsg = addMessageToChat({ role: 'model', parts: [{ text: `${t('configLoaded')}: "${activeConfig.configName}" (${activeConfig.apiType})` }], timestamp: Date.now(), isTempStatus: true });
                 setTimeout(() => removeMessageByContentCheck(msg => msg.isTempStatus && msg.timestamp === tempStatusMsg.timestamp), 3000);
                 enableInputs();
             }
         } else {
-            setupOnboardingVisible = true;
-            disableInputs();
+            showSetupOnboardingForMissingConfig();
         }
 
     } catch (e) {
@@ -447,27 +547,20 @@ async function initialize() {
 
                 let configStatusMessage = t('configUpdated');
                 if (activeConfig) {
-                    setupOnboardingVisible = false;
-                    currentApiKey = activeConfig.apiKey;
-                    currentApiType = activeConfig.apiType;
-                    currentApiEndpoint = activeConfig.apiEndpoint || '';
-                    currentModelName = activeConfig.modelName;
+                    setActiveApiConfig(activeConfig);
                     configStatusMessage = `${t('switchedConfig')}: "${activeConfig.configName}" (${activeConfig.apiType})`;
 
-                    if (!currentApiKey || !currentModelName || (currentApiType === 'openai' && !currentApiEndpoint)) {
-                        addMessageToChat({ role: 'model', parts: [{ text: t('errorConfigIncomplete') }], timestamp: Date.now() });
-                        disableInputs();
+                    const missingKeys = getConfigMissingFieldKeys(activeConfig);
+                    if (missingKeys.length > 0) {
+                        showSetupOnboardingForIncompleteConfig(activeConfig, missingKeys);
+                        configStatusMessage = '';
                     } else {
+                        hideSetupOnboarding();
                         enableInputs();
                     }
                 } else {
-                    setupOnboardingVisible = true;
-                    currentApiKey = null;
-                    currentApiType = 'gemini';
-                    currentApiEndpoint = '';
-                    currentModelName = '';
+                    showSetupOnboardingForMissingConfig();
                     configStatusMessage = '';
-                    disableInputs();
                 }
                 if (configStatusMessage) {
                     addMessageToChat({ role: 'model', parts: [{ text: configStatusMessage }], timestamp: Date.now() });
@@ -516,7 +609,7 @@ function updateInterfaceLanguage() {
     updateSendShortcutHint();
     updateArchivedChatsButtonCount();
     updateRegexToolPreview();
-    if (setupOnboardingVisible && currentChat.length === 0) {
+    if (setupOnboardingVisible) {
         renderCurrentChat();
     }
 }
@@ -1052,9 +1145,9 @@ async function handleSendMessage() {
         return;
     }
 
-    if (!currentApiKey || !currentModelName || (currentApiType === 'openai' && !currentApiEndpoint)) {
-        addMessageToChat({ role: 'model', parts: [{ text: t('errorConfigIncomplete') }], timestamp: Date.now() });
-        disableInputs(); return;
+    if (!isCurrentApiConfigComplete()) {
+        revealCurrentConfigSetupCard();
+        return;
     }
 
     let finalDisplayMessage = displayUserMessageInChat;
@@ -1086,9 +1179,8 @@ async function handleSendMessage() {
 }
 
 function handleSummarizeCurrentPage() {
-    if (!currentApiKey || !currentModelName || (currentApiType === 'openai' && !currentApiEndpoint)) {
-        addMessageToChat({ role: 'model', parts: [{ text: t('errorConfigIncomplete') }], timestamp: Date.now() });
-        disableInputs();
+    if (!isCurrentApiConfigComplete()) {
+        revealCurrentConfigSetupCard();
         return;
     }
     const summaryRequestText = t('summarizePageRequest');
@@ -1138,9 +1230,8 @@ function handleSummarizeCurrentPage() {
 }
 
 function handleExtractContent() {
-    if (!currentApiKey) {
-        addMessageToChat({ role: 'model', parts: [{ text: t('errorConfigIncomplete') }], timestamp: Date.now() });
-        disableInputs();
+    if (!isCurrentApiConfigComplete()) {
+        revealCurrentConfigSetupCard();
         return;
     }
 
@@ -1173,8 +1264,8 @@ function enableInputs() {
 }
 
 async function callApi(userMessageContent, isSummary = false, imageUrl = null) {
-    if (!currentApiKey || !currentModelName || (currentApiType === 'openai' && !currentApiEndpoint)) {
-        addMessageToChat({ role: 'model', parts: [{ text: t('errorConfigIncomplete') }], timestamp: Date.now() });
+    if (!isCurrentApiConfigComplete()) {
+        revealCurrentConfigSetupCard();
         return;
     }
 
@@ -1465,9 +1556,8 @@ function finalizeStreamingMessage() {
 function renderCurrentChat() {
     if (!chatOutput) return;
     chatOutput.innerHTML = '';
-    if (setupOnboardingVisible && currentChat.length === 0) {
+    if (setupOnboardingVisible) {
         renderSetupOnboardingCard();
-        return;
     }
     currentChat.forEach((msg, index) => {
         const messageDiv = document.createElement('div');
@@ -1498,7 +1588,7 @@ function renderCurrentChat() {
         if (optionsLink) {
             optionsLink.addEventListener('click', (e) => {
                 e.preventDefault();
-                chrome.runtime.openOptionsPage();
+                openApiConfigOptions();
             });
         }
 
@@ -1555,11 +1645,12 @@ function renderCurrentChat() {
         chatOutput.appendChild(messageDiv);
     });
     if (chatOutput.scrollHeight > chatOutput.clientHeight) {
-        chatOutput.scrollTop = chatOutput.scrollHeight;
+        chatOutput.scrollTop = setupOnboardingVisible ? 0 : chatOutput.scrollHeight;
     }
 }
 
 function renderSetupOnboardingCard() {
+    const state = setupOnboardingState || { type: 'new' };
     const card = document.createElement('div');
     card.classList.add('setup-onboarding-card');
 
@@ -1571,17 +1662,25 @@ function renderSetupOnboardingCard() {
     content.classList.add('setup-onboarding-content');
 
     const title = document.createElement('h3');
-    title.textContent = t('setupWelcomeTitle');
+    title.textContent = state.type === 'incomplete' ? t('setupIncompleteTitle') : t('setupWelcomeTitle');
 
     const body = document.createElement('p');
-    body.textContent = t('setupWelcomeBody');
+    if (state.type === 'incomplete') {
+        const configName = state.configName || t('setupUnnamedConfig');
+        const missingText = (state.missingKeys || []).map(key => t(key)).join(', ');
+        body.textContent = t('setupIncompleteBody')
+            .replace('{name}', configName)
+            .replace('{missing}', missingText);
+    } else {
+        body.textContent = t('setupWelcomeBody');
+    }
 
     const button = document.createElement('button');
     button.type = 'button';
     button.classList.add('setup-onboarding-button');
-    button.textContent = t('setupWelcomeButton');
+    button.textContent = state.type === 'incomplete' ? t('setupIncompleteButton') : t('setupWelcomeButton');
     button.addEventListener('click', () => {
-        chrome.runtime.openOptionsPage();
+        openApiConfigOptions(state.configId);
     });
 
     content.appendChild(title);

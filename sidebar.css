@@ -473,6 +473,7 @@ button#toggleMoreActionsButton.active {
   display: flex;
   gap: 14px;
   padding: 18px;
+  margin-bottom: 14px;
   border: 1px solid var(--glass-border);
   border-radius: var(--border-radius);
   background: linear-gradient(135deg, rgba(102, 126, 234, 0.12) 0%, rgba(17, 153, 142, 0.1) 100%), var(--glass-bg);

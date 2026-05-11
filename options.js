@@ -29,6 +29,7 @@ document.addEventListener('DOMContentLoaded', function() {
   let configurations = [];
   let activeConfigurationId = null;
   let currentLanguage = 'zh'; // Default
+  let initialDeepLinkHandled = false;
   const DEFAULT_REGEX_PATTERN = '^\\s*(.+\\S)\\s*$';
   const DEFAULT_REGEX_FLAGS = 'gm';
 
@@ -83,6 +84,7 @@ document.addEventListener('DOMContentLoaded', function() {
       testing: "正在测试连接...", // New translation
       testSuccess: "连接成功！API 返回正常。", // New translation
       testFail: "连接失败: ", // New translation
+      editingLinkedConfig: '正在编辑需要补全的配置：“{name}”。',
 
       // Render Items
       currentActive: "(当前活动)",
@@ -142,6 +144,7 @@ document.addEventListener('DOMContentLoaded', function() {
       testing: "Testing connection...", // New translation
       testSuccess: "Connection successful! API responded.", // New translation
       testFail: "Connection failed: ", // New translation
+      editingLinkedConfig: 'Editing the configuration that needs attention: "{name}".',
 
       // Render Items
       currentActive: "(Active)",
@@ -311,6 +314,7 @@ document.addEventListener('DOMContentLoaded', function() {
     toggleRegexExtractionFields();
 
     updateInterfaceLanguage(); // Apply translations immediately
+    applyInitialDeepLink();
   }
 
   async function saveConfigurations() {
@@ -439,6 +443,29 @@ document.addEventListener('DOMContentLoaded', function() {
     
     cancelEditButton.classList.remove('hidden');
     document.getElementById('configFormContainer').scrollIntoView({ behavior: 'smooth' });
+  }
+
+  function applyInitialDeepLink() {
+    if (initialDeepLinkHandled) return;
+    initialDeepLinkHandled = true;
+
+    const params = new URLSearchParams(window.location.search);
+    const editConfigId = params.get('editConfigId');
+    const shouldFocusConfigForm = window.location.hash === '#configFormContainer' || params.get('focus') === 'apiConfig';
+
+    if (editConfigId) {
+      const config = configurations.find(c => c.id === editConfigId);
+      if (config) {
+        populateFormForEdit(config);
+        showStatus(t('editingLinkedConfig').replace('{name}', config.configName || editConfigId), 'blue');
+        return;
+      }
+    }
+
+    if (shouldFocusConfigForm) {
+      document.getElementById('configFormContainer').scrollIntoView({ behavior: 'smooth' });
+      configNameInput.focus();
+    }
   }
 
   function clearForm() {
