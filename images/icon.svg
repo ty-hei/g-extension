@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Smart Sidebar Assistant icon">
+  <defs>
+    <linearGradient id="panel" x1="15" y1="16" x2="112" y2="99" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#2438ff"/>
+      <stop offset=".56" stop-color="#1116b9"/>
+      <stop offset="1" stop-color="#080069"/>
+    </linearGradient>
+    <linearGradient id="edge" x1="84" y1="18" x2="116" y2="94" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#18c8ff"/>
+      <stop offset=".48" stop-color="#3961ff"/>
+      <stop offset="1" stop-color="#1821b4"/>
+    </linearGradient>
+    <linearGradient id="spark" x1="78" y1="24" x2="105" y2="51" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#fff67a"/>
+      <stop offset="1" stop-color="#53f4ff"/>
+    </linearGradient>
+  </defs>
+
+  <path
+    d="M24 18h80c5.5 0 10 4.5 10 10v56c0 5.5-4.5 10-10 10H55.5L35.3 111.5c-3.5 3-8.8.5-8.8-4.1V94H24c-5.5 0-10-4.5-10-10V28c0-5.5 4.5-10 10-10Z"
+    fill="url(#panel)"/>
+  <path
+    d="M86 18h18c5.5 0 10 4.5 10 10v56c0 5.5-4.5 10-10 10H86V18Z"
+    fill="url(#edge)"
+    opacity=".9"/>
+
+  <path
+    d="M93 27.5 96.2 35l7.8 3.2-7.8 3.2L93 49l-3.2-7.6-7.8-3.2 7.8-3.2L93 27.5Z"
+    fill="url(#spark)"/>
+
+  <rect x="28" y="39" width="31" height="6" rx="3" fill="#fff"/>
+  <rect x="63" y="39" width="23" height="6" rx="3" fill="#fff"/>
+  <rect x="28" y="54" width="22" height="6" rx="3" fill="#fff" opacity=".96"/>
+  <rect x="56" y="54" width="39" height="6" rx="3" fill="#fff" opacity=".96"/>
+  <rect x="48" y="73" width="30" height="6" rx="3" fill="#fff"/>
+  <circle cx="86" cy="76" r="3.5" fill="#53f4ff"/>
+</svg>

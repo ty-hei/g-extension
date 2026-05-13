@@ -1067,6 +1067,13 @@ function handleRuntimeMessages(request, sender, sendResponse) {
         case 'SUMMARIZE_EXTERNAL_TEXT_FOR_SIDEBAR': {
             const { text, linkUrl, linkTitle, warning } = request;
             removeMessageByContentCheck(msg => msg.isTempStatus && msg.parts[0].text.includes(t('linkSummaryProcessing')));
+
+            if (!isCurrentApiConfigComplete()) {
+                revealCurrentConfigSetupCard();
+                sendResponse({ error: "API configuration incomplete" });
+                break;
+            }
+
             addMessageToChat({ role: 'user', parts: [{ text: `${t('summarizeRequest')}：[${linkTitle || 'Link'}](${linkUrl}) (${text?.length || 0})` }], timestamp: Date.now() });
             if (warning) {
                 addMessageToChat({ role: 'model', parts: [{ text: `${t('summarizeLinkWarning')}: ${warning}` }], timestamp: Date.now() });
