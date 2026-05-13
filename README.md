@@ -1,6 +1,6 @@
 # Smart Sidebar Assistant / 智能侧边栏助手
 
-[![Version](https://img.shields.io/badge/version-1.3.1-blue.svg)](./manifest.json)
+[![Version](https://img.shields.io/badge/version-1.3.2-blue.svg)](./manifest.json)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 [English](#english) | [中文](#chinese)
@@ -58,7 +58,15 @@
 
 ### 📝 Changelog
 
-#### v1.3.1 (Current)
+#### v1.3.2 (Current)
+* **🧭 Setup Onboarding Fixes**:
+    * Added a clearer first-run onboarding card when no API configuration exists, guiding users directly to the Options page.
+    * Improved handling for incomplete API configurations so missing API keys, endpoints, or model names are explained in the sidebar before chat actions run.
+* **💬 Chat Input Improvements**:
+    * The chat input now auto-resizes while typing, making longer prompts easier to compose.
+    * Refined the chat input placeholder for both English and Chinese interfaces.
+
+#### v1.3.1
 * **🧰 Advanced Extraction Tools**:
     * Added an optional sidebar Regex Extract Tool. Enable it in Options, preview page content, adjust a JavaScript regex, ask AI to design a regex from the tool, and copy matches to the clipboard.
     * Kept “Extract Full Text” focused on quoting page text for chat, so regex extraction is a separate advanced workflow.
@@ -138,7 +146,15 @@
 
 ### 📝 更新日志 (Changelog)
 
-#### v1.3.1 (Current)
+#### v1.3.2 (Current)
+* **🧭 配置引导修复**:
+    * 新增更清晰的首次使用引导卡片，在尚未创建 API 配置时可直接进入选项页完成设置。
+    * 优化不完整 API 配置的处理逻辑，在聊天操作执行前提示缺少的 API Key、Endpoint 或模型名称。
+* **💬 聊天输入优化**:
+    * 聊天输入框现在会随输入内容自动增高，编写长 Prompt 更顺手。
+    * 优化中英文界面的聊天输入占位提示。
+
+#### v1.3.1
 * **🧰 高级提取工具**:
     * 新增可选的侧边栏正则提取工具。可在选项页启用，预览网页内容、调试 JavaScript 正则、调用 AI 辅助设计正则，并复制匹配结果。
     * “提取全文作为引用”保持原有聊天引用用途，正则提取作为独立高级工作流提供。

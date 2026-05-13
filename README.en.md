@@ -1,6 +1,6 @@
 # Smart Sidebar Assistant
 
-[![Version](https://img.shields.io/badge/version-1.3.1-blue.svg)](./manifest.json)
+[![Version](https://img.shields.io/badge/version-1.3.2-blue.svg)](./manifest.json)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 **An intelligent assistant that seamlessly integrates the power of Large Language Models (LLMs) into your browser's sidebar, designed to revolutionize your web browsing, information retrieval, and content creation experience.**
@@ -82,6 +82,40 @@ After installation, please proceed to **Step 2** to configure your API key.
 - **Browser APIs**: Chrome Extension Manifest V3, Side Panel API, Context Menus API, Storage API
 - **Content Extraction**: [Mozilla/Readability.js](https://github.com/mozilla/readability)
 - **Markdown Rendering**: [Marked.js](https://marked.js.org/)
+
+## 📝 Changelog
+
+#### v1.3.2 (Current)
+- **Setup Onboarding Fixes**:
+    - Added a clearer first-run onboarding card when no API configuration exists, guiding users directly to the Options page.
+    - Improved handling for incomplete API configurations so missing API keys, endpoints, or model names are explained in the sidebar before chat actions run.
+- **Chat Input Improvements**:
+    - The chat input now auto-resizes while typing, making longer prompts easier to compose.
+    - Refined the chat input placeholder for both English and Chinese interfaces.
+
+#### v1.3.1
+- **Advanced Extraction Tools**:
+    - Added an optional sidebar Regex Extract Tool. Enable it in Options, preview page content, adjust a JavaScript regex, ask AI to design a regex from the tool, and copy matches to the clipboard.
+    - Kept “Extract Full Text” focused on quoting page text for chat, so regex extraction is a separate advanced workflow.
+- **Archive Refresh**:
+    - Redesigned the archive page with a cleaner two-pane workspace, archive count, polished message cards, and improved dark mode.
+- **Experience Upgrades**:
+    - Fixed jitter during streamed AI responses.
+    - Added smarter auto-scroll behavior that follows AI output while pausing when you scroll up to read history.
+- **Enhanced Link Summarization**:
+    - Restored link drag-and-drop preview from the bottom-right floating window.
+    - Added the "Summarize Link" context menu action.
+- **Detail Improvements**:
+    - Page summary requests now include the page title and URL in chat history for better context.
+
+#### v1.3.0
+- Added English and Chinese interface switching.
+- Added system dark mode support.
+- Added API configuration connection testing.
+- Improved prompt shortcut cleanup, default configuration naming, and localized preset prompts.
+
+#### v1.2.1
+- Initial public release features, including page summaries, link drag-and-drop preview, and chat archiving.
 
 ## Future Plans
 - **Feature Enhancements**:
