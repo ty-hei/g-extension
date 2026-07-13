@@ -1,28 +1,40 @@
 // g-extension/content_script.js
 
-// Listen for messages from the background script
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-    if (request.action === "getPageContentForSummarize") {
-        // Simple extraction for now, can be improved with Readability if injected
-        const content = document.body.innerText;
-        sendResponse({ contentForSummary: content });
-    }
-    return true;
-});
+const MAX_SELECTED_TEXT_CHARS = 200000;
+const MAX_DRAG_DATA_CHARS = 16384;
+const MAX_URL_CHARS = 8192;
 
-// Listen for text selection to send to sidebar
-document.addEventListener('mouseup', () => {
-    const selectedText = window.getSelection().toString().trim();
-    if (selectedText.length > 0) {
-        chrome.runtime.sendMessage({
-            action: "TEXT_SELECTED_FROM_PAGE",
+function takeSafePrefix(value, maxChars) {
+    let end = Math.min(value.length, maxChars);
+    if (end > 0 && end < value.length) {
+        const previous = value.charCodeAt(end - 1);
+        const next = value.charCodeAt(end);
+        if (previous >= 0xD800 && previous <= 0xDBFF && next >= 0xDC00 && next <= 0xDFFF) end -= 1;
+    }
+    return value.slice(0, end);
+}
+
+// Read a selection only while this window has a connected side panel.
+document.addEventListener('mouseup', async () => {
+    try {
+        const permission = await chrome.runtime.sendMessage({ action: 'shouldCaptureSelection' });
+        if (!permission?.capture) return;
+
+        const selectedText = takeSafePrefix(window.getSelection()?.toString().trim() || '', MAX_SELECTED_TEXT_CHARS);
+        if (!selectedText) return;
+
+        await chrome.runtime.sendMessage({
+            action: 'TEXT_SELECTED_FROM_PAGE',
             text: selectedText
         });
+    } catch (_) {
+        // The extension may be reloading or the side panel may have just closed.
     }
 });
 
 // === Link Drag & Drop Preview Window ===
 let previewBox = null;
+let previewRoot = null;
 let currentDraggedLink = null;
 let isDraggingLink = false;
 
@@ -32,8 +44,11 @@ function createPreviewBox() {
 
     previewBox = document.createElement('div');
     previewBox.id = 'g-extension-link-preview';
+    previewBox.dataset.gExtensionUi = 'true';
     previewBox.style.display = 'none'; // Hidden by default
-    previewBox.innerHTML = `
+    previewRoot = previewBox.attachShadow({ mode: 'closed' });
+    const previewContent = document.createElement('div');
+    previewContent.innerHTML = `
         <div class="g-preview-header">
             <strong>🔗 链接预览</strong>
             <button class="g-preview-close" title="关闭">×</button>
@@ -47,10 +62,9 @@ function createPreviewBox() {
         </div>
     `;
 
-    // Add styles
     const style = document.createElement('style');
     style.textContent = `
-        #g-extension-link-preview {
+        :host {
             position: fixed;
             bottom: 24px;
             right: 24px;
@@ -63,9 +77,9 @@ function createPreviewBox() {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
             font-size: 14px;
             transition: all 0.3s;
-            animation: slideIn 0.3s;
+            animation: g-extension-slide-in 0.3s;
         }
-        @keyframes slideIn {
+        @keyframes g-extension-slide-in {
             from {
                 opacity: 0;
                 transform: translateY(20px);
@@ -75,7 +89,7 @@ function createPreviewBox() {
                 transform: translateY(0);
             }
         }
-        #g-extension-link-preview.drag-over {
+        :host(.drag-over) {
             background: #e8f0fe;
             transform: scale(1.05);
             border-color: #1967d2;
@@ -142,11 +156,11 @@ function createPreviewBox() {
             background: #1967d2;
         }
         @media (prefers-color-scheme: dark) {
-            #g-extension-link-preview {
+            :host {
                 background: #292a2d;
                 border-color: #8ab4f8;
             }
-            #g-extension-link-preview.drag-over {
+            :host(.drag-over) {
                 background: #3c4043;
             }
             .g-preview-header {
@@ -172,47 +186,57 @@ function createPreviewBox() {
         }
     `;
 
-    document.head.appendChild(style);
+    previewRoot.appendChild(style);
+    previewRoot.appendChild(previewContent);
     document.body.appendChild(previewBox);
 
     // Event listeners
-    const closeBtn = previewBox.querySelector('.g-preview-close');
+    const closeBtn = previewRoot.querySelector('.g-preview-close');
     closeBtn.addEventListener('click', () => {
         hidePreviewBox();
     });
 
-    const summarizeBtn = previewBox.querySelector('.g-preview-summarize-btn');
+    const summarizeBtn = previewRoot.querySelector('.g-preview-summarize-btn');
     summarizeBtn.addEventListener('click', async () => {
         if (currentDraggedLink) {
-            // Open sidebar first
-            await chrome.runtime.sendMessage({ action: 'openSidePanel' });
-
-            // Then send summarize request
-            chrome.runtime.sendMessage({
-                action: 'summarizeLinkTarget',
-                url: currentDraggedLink,
-                linkText: currentDraggedLink
-            });
-            hidePreviewBox();
+            try {
+                await chrome.runtime.sendMessage({ action: 'openSidePanel' });
+                const response = await chrome.runtime.sendMessage({
+                    action: 'summarizeLinkTarget',
+                    url: currentDraggedLink,
+                    linkText: currentDraggedLink
+                });
+                if (!response?.accepted) throw new Error(response?.error || 'Link extraction was rejected.');
+                hidePreviewBox();
+            } catch (error) {
+                summarizeBtn.textContent = '无法处理此链接';
+                summarizeBtn.title = error instanceof Error ? error.message : String(error);
+                setTimeout(() => {
+                    summarizeBtn.textContent = '总结此链接';
+                    summarizeBtn.removeAttribute('title');
+                }, 3000);
+            }
         }
     });
 
     // Drag events on preview box
-    previewBox.addEventListener('dragover', (e) => {
+    previewContent.addEventListener('dragover', (e) => {
         e.preventDefault();
         previewBox.classList.add('drag-over');
     });
 
-    previewBox.addEventListener('dragleave', () => {
+    previewContent.addEventListener('dragleave', () => {
         previewBox.classList.remove('drag-over');
     });
 
-    previewBox.addEventListener('drop', async (e) => {
+    previewContent.addEventListener('drop', async (e) => {
         e.preventDefault();
         previewBox.classList.remove('drag-over');
 
-        const url = e.dataTransfer.getData('text/uri-list') || e.dataTransfer.getData('text/plain');
-        if (url && url.startsWith('http')) {
+        const url = normalizeHttpUrl(
+            e.dataTransfer.getData('text/uri-list') || e.dataTransfer.getData('text/plain')
+        );
+        if (url) {
             currentDraggedLink = url;
             showLinkInfo(url);
 
@@ -220,6 +244,24 @@ function createPreviewBox() {
             await chrome.runtime.sendMessage({ action: 'openSidePanel' });
         }
     });
+}
+
+function normalizeHttpUrl(rawUrl) {
+    try {
+        if (typeof rawUrl !== 'string' || rawUrl.length > MAX_DRAG_DATA_CHARS) return null;
+        const candidate = rawUrl
+            .split(/\r?\n/)
+            .find(line => line.trim() && !line.trim().startsWith('#'))
+            ?.trim();
+        if (!candidate || candidate.length > MAX_URL_CHARS) return null;
+        const parsed = new URL(candidate || '');
+        if (!['http:', 'https:'].includes(parsed.protocol)) return null;
+        if (parsed.username || parsed.password) return null;
+        if (parsed.href.length > MAX_URL_CHARS) return null;
+        return parsed.href;
+    } catch (_) {
+        return null;
+    }
 }
 
 function showPreviewBox() {
@@ -236,9 +278,9 @@ function hidePreviewBox() {
 }
 
 function showLinkInfo(url) {
-    const hint = previewBox.querySelector('.g-preview-hint');
-    const linkInfo = previewBox.querySelector('.g-preview-link-info');
-    const linkText = previewBox.querySelector('.g-preview-link-text');
+    const hint = previewRoot.querySelector('.g-preview-hint');
+    const linkInfo = previewRoot.querySelector('.g-preview-link-info');
+    const linkText = previewRoot.querySelector('.g-preview-link-text');
 
     hint.style.display = 'none';
     linkInfo.style.display = 'block';
@@ -248,8 +290,8 @@ function showLinkInfo(url) {
 function resetPreviewBox() {
     if (!previewBox) return;
 
-    const hint = previewBox.querySelector('.g-preview-hint');
-    const linkInfo = previewBox.querySelector('.g-preview-link-info');
+    const hint = previewRoot.querySelector('.g-preview-hint');
+    const linkInfo = previewRoot.querySelector('.g-preview-link-info');
 
     hint.style.display = 'block';
     linkInfo.style.display = 'none';
@@ -258,8 +300,8 @@ function resetPreviewBox() {
 
 // Listen for drag events on links
 document.addEventListener('dragstart', (e) => {
-    // Check if dragging a link
-    if (e.target.tagName === 'A' && e.target.href) {
+    const link = e.target instanceof Element ? e.target.closest('a[href]') : null;
+    if (link && normalizeHttpUrl(link.href)) {
         isDraggingLink = true;
         showPreviewBox();
     }
@@ -276,10 +318,3 @@ document.addEventListener('dragend', () => {
         }, 300);
     }
 });
-
-// Initialize preview box structure when page loads (but keep it hidden)
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', createPreviewBox);
-} else {
-    createPreviewBox();
-}

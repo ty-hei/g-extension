@@ -75,6 +75,7 @@
       <div id="selectedTextPreview"
         style="display:none; font-style: italic; color: gray; padding: 5px; border: 1px dashed #ccc; margin-bottom: 5px;">
         <span data-i18n="quoteContent">引用内容:</span> <span id="selectedTextContent"></span>
+        <button id="copySelectedTextButton" data-i18n="copyQuote" style="margin-left: 5px; font-size: 0.8em;">复制</button>
         <button id="clearSelectedTextButton" data-i18n="clear" style="margin-left: 5px; font-size: 0.8em;">清除</button>
       </div>
       <textarea id="chatInput" placeholder="输入消息或使用快捷方式..."></textarea>
@@ -86,6 +87,8 @@
     </div>
   </div>
   <script src="/libs/marked.min.js"></script>
+  <script src="/libs/safe_markdown.js"></script>
+  <script src="/regex_engine.js"></script>
   <script src="sidebar.js"></script>
 </body>
 

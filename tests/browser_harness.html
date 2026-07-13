@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>g-extension browser smoke tests</title>
+</head>
+<body>
+  <h1>Browser smoke tests</h1>
+  <pre id="results">Running…</pre>
+  <script src="../libs/marked.min.js"></script>
+  <script src="../libs/safe_markdown.js"></script>
+  <script>
+    (async () => {
+      const results = [];
+      const check = (name, passed, details = '') => results.push({ name, passed: Boolean(passed), details });
+
+      const sanitized = renderSafeMarkdown(
+        '[unsafe](javascript:alert(1)) [safe](https://example.com/) ' +
+        '<img src=x onerror=alert(1)><scr' + 'ipt>alert(1)</scr' + 'ipt>' +
+        '<a href="https://example.org/" onclick="alert(1)" style="color:red">allowed</a>'
+      );
+      const template = document.createElement('template');
+      template.innerHTML = sanitized;
+      const links = Array.from(template.content.querySelectorAll('a'));
+      check('dangerous nodes are dropped', !template.content.querySelector('img,script,svg,iframe'));
+      check('javascript links lose href', links[0] && !links[0].hasAttribute('href'));
+      check('https links are retained', links.some(link => link.getAttribute('href') === 'https://example.com/'));
+      check('event/style attributes are stripped', links.every(link => !link.hasAttribute('onclick') && !link.hasAttribute('style')));
+      check('safe links get rel protection', links.filter(link => link.hasAttribute('href')).every(link => link.getAttribute('rel') === 'noopener noreferrer'));
+
+      const runWorker = (payload, timeoutMs = 1000) => new Promise((resolve, reject) => {
+        const worker = new Worker('../regex_worker.js');
+        const timeout = setTimeout(() => {
+          worker.terminate();
+          reject(new Error('worker timeout'));
+        }, timeoutMs);
+        worker.onmessage = event => {
+          clearTimeout(timeout);
+          worker.terminate();
+          resolve(event.data);
+        };
+        worker.onerror = event => {
+          clearTimeout(timeout);
+          worker.terminate();
+          reject(new Error(event.message));
+        };
+        worker.postMessage(payload);
+      });
+
+      const multiline = await runWorker({
+        id: 'multiline',
+        sourceText: 'line one\nline two\nline three',
+        patternInput: '/^(.+)$/gm',
+        flagsInput: '',
+        maxMatches: 10,
+        maxResultChars: 1000
+      });
+      check('multiline regex extracts every line', multiline.ok && multiline.matchCount === 3 && multiline.matches.join('|') === 'line one|line two|line three');
+
+      const zeroWidth = await runWorker({
+        id: 'zero-width',
+        sourceText: '😀',
+        patternInput: '//u',
+        flagsInput: '',
+        maxMatches: 10,
+        maxResultChars: 1000
+      });
+      check('unicode zero-width regex terminates', zeroWidth.ok && zeroWidth.matchCount === 2);
+
+      let runawayWasTerminated = false;
+      try {
+        await runWorker({
+          id: 'runaway',
+          sourceText: 'a'.repeat(30000) + '!',
+          patternInput: '/^(a+)+$/',
+          flagsInput: '',
+          maxMatches: 10,
+          maxResultChars: 1000
+        }, 100);
+      } catch (error) {
+        runawayWasTerminated = error.message === 'worker timeout';
+      }
+      check('runaway regex can be terminated without blocking the page', runawayWasTerminated);
+
+      window.browserSmokeResults = results;
+      document.getElementById('results').textContent = JSON.stringify(results, null, 2);
+      document.documentElement.dataset.testsComplete = 'true';
+    })().catch(error => {
+      window.browserSmokeResults = [{ name: 'harness', passed: false, details: error.message }];
+      document.getElementById('results').textContent = JSON.stringify(window.browserSmokeResults, null, 2);
+      document.documentElement.dataset.testsComplete = 'true';
+    });
+  </script>
+</body>
+</html>
