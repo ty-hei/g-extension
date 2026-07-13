@@ -136,6 +136,71 @@ test('untrusted webpage requests exclude prior chat history and add a safety ins
   assert.equal(JSON.stringify(requests[2]).includes('SUMMARY PAGE'), true);
 });
 
+test('ordinary sidebar turns are sent exactly once and use the configuration captured at enqueue time', async function () {
+  const requests = [];
+  const messages = [];
+  const loaded = createSidebarVm({
+    fetch: async function (url, init) {
+      requests.push({ url, body: JSON.parse(init.body) });
+      return { ok: false, status: 500, async text() { return '{}'; } };
+    }
+  });
+  installApiStubs(loaded, messages);
+  loaded.assign(`
+    currentChat = [
+      { role: 'user', parts: [{ text: 'earlier' }], timestamp: 1 },
+      { role: 'model', parts: [{ text: 'answer' }], timestamp: 2 },
+      { role: 'user', parts: [{ text: 'CURRENT' }], timestamp: 3, turnId: 'turn-current' }
+    ];
+  `);
+
+  const pending = loaded.get('callApi')('CURRENT', false, null, false, 'turn-current');
+  loaded.assign(`
+    currentApiEndpoint = 'https://changed.example.test/v1/chat/completions';
+    currentModelName = 'changed-model';
+  `);
+  assert.equal(await pending, false);
+  assert.equal(requests.length, 1);
+  assert.equal(requests[0].url, 'https://api.example.test/v1/chat/completions');
+  assert.equal(requests[0].body.model, 'test-model');
+  assert.equal(JSON.stringify(requests[0].body).match(/CURRENT/g)?.length, 1);
+});
+
+test('prompt expansion preserves untrusted provenance and selected text never sends its source URL', async function () {
+  const captured = [];
+  const loaded = createSidebarVm();
+  loaded.context.__input = createFakeElement('textarea');
+  loaded.context.__sendCapture = (...args) => {
+    captured.push(clone(args));
+    return Promise.resolve(true);
+  };
+  loaded.context.__addCapture = message => message;
+  loaded.assign(`
+    chatInput = globalThis.__input;
+    resizeChatInput = () => {};
+    clearSelectedImagePreview = () => {};
+    addMessageToChat = globalThis.__addCapture;
+    callApi = globalThis.__sendCapture;
+    isCurrentApiConfigComplete = () => true;
+    currentSelectedText = 'PAGE TEXT';
+    currentSelectedSource = {
+      url: 'https://example.test/private?access_token=secret#fragment',
+      title: 'Private page'
+    };
+  `);
+
+  loaded.get('applyPromptTemplate')({ content: 'Translate:\n{{text}}' });
+  assert.equal(loaded.context.__input.value, 'Translate:\nPAGE TEXT');
+  assert.equal(loaded.get('currentSelectedSource'), null);
+  assert.equal(clone(loaded.get('pendingInputProvenance')).untrusted, true);
+
+  await loaded.get('handleSendMessage')();
+  assert.equal(captured.length, 1);
+  assert.equal(captured[0][0], 'Translate:\nPAGE TEXT');
+  assert.equal(captured[0][3], true);
+  assert.equal(JSON.stringify(captured[0]).includes('access_token'), false);
+});
+
 test('only locally generated 401/403 errors receive the trusted options-link marker', async function () {
   let status = 401;
   const messages = [];

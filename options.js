@@ -30,8 +30,11 @@ document.addEventListener('DOMContentLoaded', function() {
   let activeConfigurationId = null;
   let currentLanguage = 'zh'; // Default
   let initialDeepLinkHandled = false;
+  let isTestingConfiguration = false;
   const DEFAULT_REGEX_PATTERN = '^\\s*(.+\\S)\\s*$';
   const DEFAULT_REGEX_FLAGS = 'gm';
+  const CONFIG_TEST_TIMEOUT_MS = 20 * 1000;
+  const MAX_ERROR_TEXT_CHARS = 4000;
 
   const translations = {
     zh: {
@@ -65,7 +68,7 @@ document.addEventListener('DOMContentLoaded', function() {
       configNamePlaceholder: "例如：我的 Gemini 主力 (留空将自动生成)",
       apiKeyPlaceholder: "粘贴您的 API 密钥",
       apiEndpointPlaceholder: "例如: https://api.openai.com/v1/chat/completions",
-      modelNamePlaceholder: "例如: gemini-2.0-flash 或 gpt-4o",
+      modelNamePlaceholder: "例如: gemini-3.5-flash 或 gpt-4o",
       regexPatternPlaceholder: "例如: 标题[:：]\\s*(.+)",
       regexFlagsPlaceholder: "例如: gim",
       
@@ -80,6 +83,7 @@ document.addEventListener('DOMContentLoaded', function() {
       regexPatternInvalid: "正则表达式无效: ",
       valConfigName: "API密钥和模型名称不能为空。", 
       valApiEndpoint: "OpenAI 兼容 API 需要填写 Endpoint URL。",
+      valSecureEndpoint: "远程 Endpoint 必须使用 HTTPS；仅本机开发地址可使用 HTTP。",
       confirmDelete: '确定要删除配置 "{name}" 吗？',
       testing: "正在测试连接...", // New translation
       testSuccess: "连接成功！API 返回正常。", // New translation
@@ -125,7 +129,7 @@ document.addEventListener('DOMContentLoaded', function() {
       configNamePlaceholder: "E.g., My Main Gemini (Leave empty to auto-generate)",
       apiKeyPlaceholder: "Paste your API Key here",
       apiEndpointPlaceholder: "E.g., https://api.openai.com/v1/chat/completions",
-      modelNamePlaceholder: "E.g., gemini-2.0-flash or gpt-4o",
+      modelNamePlaceholder: "E.g., gemini-3.5-flash or gpt-4o",
       regexPatternPlaceholder: "E.g., Title[:：]\\s*(.+)",
       regexFlagsPlaceholder: "E.g., gim",
       
@@ -140,6 +144,7 @@ document.addEventListener('DOMContentLoaded', function() {
       regexPatternInvalid: "Invalid regular expression: ",
       valConfigName: "API Key and Model Name are required.",
       valApiEndpoint: "Endpoint URL is required for OpenAI-compatible APIs.",
+      valSecureEndpoint: "Remote endpoints must use HTTPS; HTTP is allowed only for loopback development.",
       confirmDelete: 'Are you sure you want to delete config "{name}"?',
       testing: "Testing connection...", // New translation
       testSuccess: "Connection successful! API responded.", // New translation
@@ -325,9 +330,47 @@ document.addEventListener('DOMContentLoaded', function() {
         activeConfigurationId: activeConfigurationId 
       });
       showStatus(t('statusSaved'), 'green');
+      return true;
     } catch (e) {
       showStatus(t('statusError') + ' ' + e.message, 'red');
       console.error("Error saving configurations:", e);
+      return false;
+    }
+  }
+
+  function readConfigurationForm() {
+    const rawConfig = {
+      apiKey: apiKeyInput.value.trim(),
+      apiType: apiTypeSelect.value,
+      apiEndpoint: apiEndpointInput.value.trim(),
+      modelName: modelNameInput.value.trim()
+    };
+    try {
+      return GExtensionApi.snapshotConfiguration(rawConfig, { allowLoopbackHttp: true });
+    } catch (error) {
+      const message = error?.code === 'INSECURE_ENDPOINT' ? t('valSecureEndpoint') : error.message;
+      showStatus(message, 'red');
+      return null;
+    }
+  }
+
+  async function readBoundedErrorText(response) {
+    if (!response?.body?.getReader) {
+      return String(await response.text()).slice(0, MAX_ERROR_TEXT_CHARS);
+    }
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let output = '';
+    try {
+      while (output.length < MAX_ERROR_TEXT_CHARS) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        output += decoder.decode(value, { stream: true });
+      }
+      output += decoder.decode();
+      return output.slice(0, MAX_ERROR_TEXT_CHARS);
+    } finally {
+      await reader.cancel().catch(() => {});
     }
   }
 
@@ -399,8 +442,9 @@ document.addEventListener('DOMContentLoaded', function() {
         setActiveButton.style.opacity = 0.5;
       }
       setActiveButton.addEventListener('click', async () => {
+        const previousActiveId = activeConfigurationId;
         activeConfigurationId = config.id;
-        await saveConfigurations();
+        if (!await saveConfigurations()) activeConfigurationId = previousActiveId;
         renderConfigurations(); // Re-render to update active status
       });
       actionsDiv.appendChild(setActiveButton);
@@ -416,12 +460,19 @@ document.addEventListener('DOMContentLoaded', function() {
       deleteButton.classList.add('delete-btn');
       deleteButton.addEventListener('click', async () => {
         if (confirm(t('confirmDelete').replace('{name}', escapeHtml(config.configName)))) {
+          const previousConfigurations = configurations;
+          const previousActiveId = activeConfigurationId;
           configurations = configurations.filter(c => c.id !== config.id);
           if (activeConfigurationId === config.id) {
             activeConfigurationId = configurations.length > 0 ? configurations[0].id : null;
           }
-          await saveConfigurations();
-          loadConfigurations(); // Reload and re-render
+          if (await saveConfigurations()) {
+            await loadConfigurations(); // Reload and re-render
+          } else {
+            configurations = previousConfigurations;
+            activeConfigurationId = previousActiveId;
+            renderConfigurations();
+          }
         }
       });
       actionsDiv.appendChild(deleteButton);
@@ -489,53 +540,49 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // --- New Test Logic ---
   testConfigButton.addEventListener('click', async () => {
-    const apiKey = apiKeyInput.value.trim();
-    const apiType = apiTypeSelect.value;
-    const apiEndpoint = apiEndpointInput.value.trim();
-    const modelName = modelNameInput.value.trim();
-
-    if (!apiKey || !modelName) {
-      showStatus(t('valConfigName'), 'red');
-      return;
-    }
-    if (apiType === 'openai' && !apiEndpoint) {
-      showStatus(t('valApiEndpoint'), 'red');
-      return;
-    }
+    if (isTestingConfiguration) return;
+    const config = readConfigurationForm();
+    if (!config) return;
 
     showStatus(t('testing'), 'blue');
+    isTestingConfiguration = true;
+    testConfigButton.disabled = true;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), CONFIG_TEST_TIMEOUT_MS);
 
     try {
         let response;
-        if (apiType === 'gemini') {
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
-            response = await fetch(url, {
+        if (config.apiType === 'gemini') {
+            const request = GExtensionApi.buildGeminiRequest(config.apiKey, config.modelName, 'generateContent');
+            response = await fetch(request.endpoint, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: request.headers,
                 body: JSON.stringify({
                     contents: [{ parts: [{ text: "Test" }] }],
                     generationConfig: { maxOutputTokens: 1 }
-                })
+                }),
+                signal: controller.signal
             });
-        } else if (apiType === 'openai') {
-            response = await fetch(apiEndpoint, {
+        } else if (config.apiType === 'openai') {
+            response = await fetch(config.apiEndpoint, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${apiKey}`
+                    'Authorization': `Bearer ${config.apiKey}`
                 },
                 body: JSON.stringify({
-                    model: modelName,
+                    model: config.modelName,
                     messages: [{ role: "user", content: "Test" }],
                     max_tokens: 1
-                })
+                }),
+                signal: controller.signal
             });
         }
 
         if (response.ok) {
             showStatus(t('testSuccess'), 'green');
         } else {
-            const errorText = await response.text();
+            const errorText = await readBoundedErrorText(response);
             let errorMsg = errorText;
             try {
                 const errorJson = JSON.parse(errorText);
@@ -544,26 +591,20 @@ document.addEventListener('DOMContentLoaded', function() {
             showStatus(t('testFail') + ` (${response.status}) ` + errorMsg.substring(0, 100), 'red');
         }
     } catch (error) {
-        showStatus(t('testFail') + error.message, 'red');
+        const message = error?.name === 'AbortError' ? 'Timeout' : error.message;
+        showStatus(t('testFail') + message, 'red');
+    } finally {
+        clearTimeout(timeout);
+        isTestingConfiguration = false;
+        testConfigButton.disabled = false;
     }
   });
 
   saveConfigButton.addEventListener('click', async () => {
     const id = configIdInput.value;
     let configName = configNameInput.value.trim();
-    const apiKey = apiKeyInput.value.trim();
-    const apiType = apiTypeSelect.value;
-    const apiEndpoint = apiEndpointInput.value.trim();
-    const modelName = modelNameInput.value.trim();
-
-    if (!apiKey || !modelName) {
-      showStatus(t('valConfigName'), 'red');
-      return;
-    }
-    if (apiType === 'openai' && !apiEndpoint) {
-      showStatus(t('valApiEndpoint'), 'red');
-      return;
-    }
+    const validatedConfig = readConfigurationForm();
+    if (!validatedConfig) return;
 
     // Auto-generate config name if empty
     if (!configName) {
@@ -573,12 +614,14 @@ document.addEventListener('DOMContentLoaded', function() {
     const newConfig = {
       id: id || generateId(),
       configName,
-      apiKey,
-      apiType,
-      apiEndpoint: apiType === 'openai' ? apiEndpoint : '',
-      modelName
+      apiKey: validatedConfig.apiKey,
+      apiType: validatedConfig.apiType,
+      apiEndpoint: validatedConfig.apiEndpoint,
+      modelName: validatedConfig.modelName
     };
 
+    const previousConfigurations = configurations.map(config => ({ ...config }));
+    const previousActiveId = activeConfigurationId;
     const existingIndex = configurations.findIndex(c => c.id === newConfig.id);
     if (existingIndex > -1) {
       configurations[existingIndex] = newConfig; // Update existing
@@ -590,9 +633,13 @@ document.addEventListener('DOMContentLoaded', function() {
         activeConfigurationId = newConfig.id;
     }
 
-    await saveConfigurations();
-    clearForm();
-    loadConfigurations(); 
+    if (await saveConfigurations()) {
+      clearForm();
+      await loadConfigurations();
+    } else {
+      configurations = previousConfigurations;
+      activeConfigurationId = previousActiveId;
+    }
   });
 
   function escapeHtml(unsafe) {

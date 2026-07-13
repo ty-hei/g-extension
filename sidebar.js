@@ -4,7 +4,7 @@
 let currentApiKey = null;
 let currentApiType = 'gemini'; // Default to Gemini
 let currentApiEndpoint = ''; // For OpenAI-compatible APIs
-let currentModelName = 'gemini-2.0-flash'; // Default model
+let currentModelName = globalThis.GExtensionApi?.DEFAULT_GEMINI_MODEL || 'gemini-3.5-flash';
 let currentLanguage = 'zh'; // Default language
 
 let currentChat = [];
@@ -12,6 +12,7 @@ let allChats = [];
 let archivedChats = [];
 let currentSelectedText = null;
 let currentSelectedSource = null;
+let pendingInputProvenance = null;
 let currentSelectedImageUrl = null;
 let promptTemplates = [];
 let streamingMessageElement = null; // Track the DOM element being streamed to
@@ -359,9 +360,21 @@ function getConfigMissingFieldKeys(config) {
 }
 
 function isCurrentApiConfigComplete() {
-    return !!String(currentApiKey || '').trim()
-        && !!String(currentModelName || '').trim()
-        && (currentApiType !== 'openai' || !!String(currentApiEndpoint || '').trim());
+    try {
+        snapshotCurrentApiConfig();
+        return true;
+    } catch (_) {
+        return false;
+    }
+}
+
+function snapshotCurrentApiConfig() {
+    return GExtensionApi.snapshotConfiguration({
+        apiKey: currentApiKey,
+        apiType: currentApiType,
+        apiEndpoint: currentApiEndpoint,
+        modelName: currentModelName
+    }, { allowLoopbackHttp: true });
 }
 
 function setActiveApiConfig(config) {
@@ -1041,6 +1054,7 @@ function buildRegexDesignPrompt(pageText) {
 
 function fillRegexDesignPrompt() {
     const pageText = getRegexToolActiveSource() || currentSelectedText || '';
+    if (pageText) pendingInputProvenance = { untrusted: true, kind: 'regex-page-text' };
     chatInput.value = buildRegexDesignPrompt(pageText);
     resizeChatInput();
     chatInput.focus();
@@ -1103,12 +1117,15 @@ function renderPromptShortcuts() {
 function applyPromptTemplate(template) {
     let content = template.content;
     if (currentSelectedText && content.includes("{{text}}")) {
+        if (currentSelectedSource?.url) {
+            pendingInputProvenance = { untrusted: true, kind: 'selected-page-text' };
+        }
         content = content.replace(/{{text}}/g, currentSelectedText);
-        // Clear the selected text preview because it has been consumed by the prompt
-        clearSelectedTextPreview();
+        clearSelectedTextPreview({ preserveInputProvenance: true });
     }
     if (content.includes("{{pageText}}")) {
         const pageText = getRegexToolActiveSource() || currentSelectedText || '';
+        if (pageText) pendingInputProvenance = { untrusted: true, kind: 'page-text-template' };
         content = content.replace(/{{pageText}}/g, pageText);
     }
     chatInput.value = content;
@@ -1369,6 +1386,18 @@ function scheduleLinkJobRetry(requestId, retryAt) {
 
 function queueTerminalLinkJob(job) {
     if (queuedLinkJobIds.has(job.requestId)) return;
+    let apiConfig;
+    try {
+        apiConfig = snapshotCurrentApiConfig();
+    } catch (error) {
+        addMessageToChat({
+            role: 'model',
+            parts: [{ text: `${t('requestFail')}: ${error.message}` }],
+            timestamp: Date.now(),
+            excludeFromApiHistory: true
+        });
+        return;
+    }
     queuedLinkJobIds.add(job.requestId);
     const queuedRequest = enqueueApiTask(async () => {
         const claimResponse = await chrome.runtime.sendMessage({
@@ -1388,7 +1417,7 @@ function queueTerminalLinkJob(job) {
                 claimResponse.job,
                 claimResponse.claimToken,
                 (prompt, isSummary, imageUrl, containsUntrustedWebContent) =>
-                    performApiCall(prompt, isSummary, imageUrl, containsUntrustedWebContent, [])
+                    performApiCall(prompt, isSummary, imageUrl, containsUntrustedWebContent, [], apiConfig)
             );
         } catch (error) {
             console.error('Sidebar: failed to consume claimed link job', job.requestId, error);
@@ -1533,10 +1562,10 @@ function removeMessageByContentCheck(conditionFn) {
 
 async function handleSendMessage() {
     const messageText = chatInput.value.trim();
-    const includesUntrustedPageContent = Boolean(currentSelectedText && currentSelectedSource?.url);
-    const selectedTextForApi = currentSelectedText && currentSelectedSource?.url
-        ? `Source: ${currentSelectedSource.title || currentSelectedSource.url}\n${currentSelectedSource.url}\n\n${currentSelectedText}`
-        : currentSelectedText;
+    const includesUntrustedPageContent = Boolean(
+        pendingInputProvenance?.untrusted || (currentSelectedText && currentSelectedSource?.url)
+    );
+    const selectedTextForApi = currentSelectedText;
     const serializedSelectedText = includesUntrustedPageContent
         ? JSON.stringify(selectedTextForApi)
         : selectedTextForApi;
@@ -1590,10 +1619,12 @@ async function handleSendMessage() {
         return;
     }
 
+    const currentTurnId = createRequestId('turn');
     addMessageToChat({
         role: 'user',
         parts: [{ text: finalDisplayMessage }],
         timestamp: Date.now(),
+        turnId: currentTurnId,
         excludeFromApiHistory: includesUntrustedPageData
     });
 
@@ -1602,7 +1633,7 @@ async function handleSendMessage() {
     clearSelectedTextPreview();
     clearSelectedImagePreview();
 
-    await callApi(finalApiTextMessage, false, imageUrlToSend, includesUntrustedPageData);
+    await callApi(finalApiTextMessage, false, imageUrlToSend, includesUntrustedPageData, currentTurnId);
 }
 
 async function handleSummarizeCurrentPage() {
@@ -1734,16 +1765,18 @@ function limitTextForApi(value, maxChars = MAX_API_TEXT_CHARS) {
     };
 }
 
-function snapshotCurrentChat() {
-    return currentChat.map(message => ({
+function snapshotCurrentChat(excludeTurnId = null) {
+    return currentChat
+        .filter(message => !excludeTurnId || message.turnId !== excludeTurnId)
+        .map(message => ({
         ...message,
         parts: Array.isArray(message.parts)
             ? message.parts.map(part => ({ ...part }))
             : []
-    }));
+        }));
 }
 
-function buildBoundedApiHistory(historySnapshot) {
+function buildBoundedApiHistory(historySnapshot, apiType) {
     const candidates = historySnapshot
         .filter(msg =>
             !msg.isTempStatus &&
@@ -1768,7 +1801,7 @@ function buildBoundedApiHistory(historySnapshot) {
     }
 
     return selected.map(msg => {
-        if (currentApiType === 'openai') {
+        if (apiType === 'openai') {
             return { role: msg.role === 'model' ? 'assistant' : msg.role, content: msg.text };
         }
         return { role: msg.role, parts: [{ text: msg.text }] };
@@ -1830,10 +1863,17 @@ async function readStreamChunkWithIdleTimeout(reader, controller) {
     }
 }
 
-function callApi(userMessageContent, isSummary = false, imageUrl = null, containsUntrustedWebContent = false) {
-    const historySnapshot = snapshotCurrentChat();
+function callApi(userMessageContent, isSummary = false, imageUrl = null, containsUntrustedWebContent = false, currentTurnId = null) {
+    let apiConfig;
+    try {
+        apiConfig = snapshotCurrentApiConfig();
+    } catch (error) {
+        revealCurrentConfigSetupCard();
+        return Promise.resolve(false);
+    }
+    const historySnapshot = snapshotCurrentChat(currentTurnId);
     return enqueueApiTask(() =>
-        performApiCall(userMessageContent, isSummary, imageUrl, containsUntrustedWebContent, historySnapshot)
+        performApiCall(userMessageContent, isSummary, imageUrl, containsUntrustedWebContent, historySnapshot, apiConfig)
     );
 }
 
@@ -1842,9 +1882,17 @@ async function performApiCall(
     isSummary = false,
     imageUrl = null,
     containsUntrustedWebContent = false,
-    historySnapshot = []
+    historySnapshot = [],
+    apiConfig = null
 ) {
-    if (!isCurrentApiConfigComplete()) {
+    if (!apiConfig) {
+        try {
+            apiConfig = snapshotCurrentApiConfig();
+        } catch (_) {
+            apiConfig = null;
+        }
+    }
+    if (!apiConfig) {
         revealCurrentConfigSetupCard();
         return false;
     }
@@ -1857,7 +1905,8 @@ async function performApiCall(
 
     const boundedUserMessage = limitTextForApi(userMessageContent);
     const isolateWebContent = isSummary || containsUntrustedWebContent;
-    const historyForAPI = isolateWebContent ? [] : buildBoundedApiHistory(historySnapshot);
+    const { apiType, apiKey, apiEndpoint, modelName } = apiConfig;
+    const historyForAPI = isolateWebContent ? [] : buildBoundedApiHistory(historySnapshot, apiType);
     const safetyInstruction = isSummary ? t('summarySafetyInstruction') : t('webContentSafetyInstruction');
     if (boundedUserMessage.truncated) {
         const warning = addMessageToChat({ role: 'model', parts: [{ text: t('apiTextTruncated') }], timestamp: Date.now(), isTempStatus: true });
@@ -1866,8 +1915,10 @@ async function performApiCall(
 
     // ----- Specific API Request Construction -----
     try {
-        if (currentApiType === 'gemini') {
-            endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${currentModelName}:streamGenerateContent?key=${currentApiKey}&alt=sse`;
+        if (apiType === 'gemini') {
+            const geminiRequest = GExtensionApi.buildGeminiRequest(apiKey, modelName, 'streamGenerateContent', { stream: true });
+            endpoint = geminiRequest.endpoint;
+            headers = geminiRequest.headers;
             const geminiUserParts = [];
             if (boundedUserMessage.text && boundedUserMessage.text.trim() !== "") {
                 geminiUserParts.push({ text: boundedUserMessage.text });
@@ -1893,9 +1944,9 @@ async function performApiCall(
                 requestBody.systemInstruction = { parts: [{ text: safetyInstruction }] };
             }
 
-        } else if (currentApiType === 'openai') {
-            endpoint = currentApiEndpoint;
-            headers['Authorization'] = `Bearer ${currentApiKey}`;
+        } else if (apiType === 'openai') {
+            endpoint = apiEndpoint;
+            headers['Authorization'] = `Bearer ${apiKey}`;
             const openaiCurrentUserMessageContent = [];
             if (boundedUserMessage.text && boundedUserMessage.text.trim() !== "") {
                 openaiCurrentUserMessageContent.push({ type: "text", text: boundedUserMessage.text });
@@ -1920,7 +1971,7 @@ async function performApiCall(
                 openaiCurrentUserMessageContent.unshift({ type: "text", text: t('describeImage') });
             }
             requestBody = {
-                model: currentModelName,
+                model: modelName,
                 messages: [
                     ...(isolateWebContent ? [{ role: 'system', content: safetyInstruction }] : []),
                     ...historyForAPI,
@@ -1929,7 +1980,7 @@ async function performApiCall(
                 stream: true
             };
         } else {
-            throw new Error(`API "${currentApiType}" not supported.`);
+            throw new Error(`API "${apiType}" not supported.`);
         }
     } catch (error) {
         removeMessageByContentCheck(msg => msg.isThinking && msg.timestamp === thinkingMessage.timestamp);
@@ -2027,11 +2078,11 @@ async function performApiCall(
                     const data = JSON.parse(jsonStr);
                     let chunkText = '';
 
-                    if (currentApiType === 'gemini') {
+                    if (apiType === 'gemini') {
                         if (data.candidates && data.candidates[0]?.content?.parts) {
                             chunkText = data.candidates[0].content.parts.map(part => part.text).join("");
                         }
-                    } else if (currentApiType === 'openai') {
+                    } else if (apiType === 'openai') {
                         if (data.choices && data.choices[0]?.delta?.content) {
                             chunkText = data.choices[0].delta.content;
                         }
@@ -2056,7 +2107,7 @@ async function performApiCall(
         }
 
         if (aiMessage) {
-            if (currentApiType === 'gemini' && buffer.startsWith('data: ')) {
+            if (apiType === 'gemini' && buffer.startsWith('data: ')) {
                 try {
                     const finalJson = JSON.parse(buffer.substring(6));
                     if (finalJson.promptFeedback?.blockReason) {
@@ -2075,7 +2126,7 @@ async function performApiCall(
         }
 
     } catch (error) {
-        console.error(`Error calling or streaming from ${currentApiType} API:`, error);
+        console.error(`Error calling or streaming from ${apiType} API:`, error);
         removeMessageByContentCheck(msg => msg.isThinking && msg.timestamp === thinkingMessage.timestamp);
         let friendlyError = t('apiCommErr');
         if (requestTimedOut || error?.code === 'API_TIMEOUT' || error?.name === 'AbortError') {
@@ -2308,9 +2359,10 @@ function escapeHtml(unsafe) {
         .replace(/'/g, "&#039;");
 }
 
-function clearSelectedTextPreview() {
+function clearSelectedTextPreview({ preserveInputProvenance = false } = {}) {
     currentSelectedText = null;
     currentSelectedSource = null;
+    if (!preserveInputProvenance) pendingInputProvenance = null;
     if (selectedTextPreview) selectedTextPreview.style.display = 'none';
     if (selectedTextContent) selectedTextContent.textContent = '';
 }

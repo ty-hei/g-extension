@@ -70,6 +70,45 @@ test('options sends the OpenAI-compatible connection-test request and renders st
   assert.match(loaded.elements.get('status').textContent, /\(429\) rate limited/);
 });
 
+test('options uses Gemini header authentication and rejects insecure remote endpoints before fetch', async function () {
+  const loaded = await createOptionsVm();
+  loaded.elements.get('apiType').value = 'gemini';
+  loaded.elements.get('apiKey').value = 'gemini-secret';
+  loaded.elements.get('modelName').value = 'gemini-3.5-flash';
+  await loaded.elements.get('testConfigButton').dispatch('click');
+
+  assert.equal(loaded.fetchCalls.length, 1);
+  assert.equal(loaded.fetchCalls[0].url.includes('gemini-secret'), false);
+  assert.equal(loaded.fetchCalls[0].init.headers['x-goog-api-key'], 'gemini-secret');
+
+  loaded.elements.get('apiType').value = 'openai';
+  loaded.elements.get('apiEndpoint').value = 'http://api.example.test/v1/chat/completions';
+  await loaded.elements.get('testConfigButton').dispatch('click');
+  assert.equal(loaded.fetchCalls.length, 1);
+  assert.match(loaded.elements.get('status').textContent, /HTTPS/);
+});
+
+test('a failed configuration write preserves the form and restores in-memory state', async function () {
+  const loaded = await createOptionsVm({
+    onSyncSet() {
+      throw new Error('quota exceeded');
+    }
+  });
+  loaded.elements.get('configName').value = 'Keep me';
+  loaded.elements.get('apiType').value = 'openai';
+  loaded.elements.get('apiEndpoint').value = 'https://api.example.test/v1/chat/completions';
+  loaded.elements.get('apiKey').value = 'secret-key';
+  loaded.elements.get('modelName').value = 'test-model';
+
+  await loaded.elements.get('saveConfigButton').dispatch('click');
+
+  assert.equal(loaded.elements.get('configName').value, 'Keep me');
+  assert.equal(loaded.elements.get('apiKey').value, 'secret-key');
+  assert.equal(loaded.elements.get('apiEndpoint').value, 'https://api.example.test/v1/chat/completions');
+  assert.equal(loaded.exports.getConfigurations().length, 0);
+  assert.match(loaded.elements.get('status').textContent, /quota exceeded/);
+});
+
 test('prompt migration canonicalizes reserved preset IDs while retaining custom prompts as inert text', async function () {
   const customName = '<img src=x onerror=alert(1)>';
   const customContent = '<script>globalThis.pwned = true</script>\n{{text}}';

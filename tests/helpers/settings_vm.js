@@ -258,8 +258,11 @@ async function createOptionsVm(options = {}) {
     window,
     chrome,
     URLSearchParams,
+    URL,
     RegExp,
     Date,
+    TextDecoder,
+    AbortController,
     setTimeout: options.setTimeout || (() => 1),
     clearTimeout() {},
     confirm: options.confirm || (() => true),
@@ -269,6 +272,8 @@ async function createOptionsVm(options = {}) {
     },
     console: options.console || { log() {}, warn() {}, error() {} }
   });
+  const apiConfigPath = path.join(ROOT, 'api_config.js');
+  vm.runInContext(fs.readFileSync(apiConfigPath, 'utf8'), context, { filename: apiConfigPath });
   const regexPath = path.join(ROOT, 'regex_engine.js');
   vm.runInContext(fs.readFileSync(regexPath, 'utf8'), context, { filename: regexPath });
   const sourcePath = path.join(ROOT, 'options.js');

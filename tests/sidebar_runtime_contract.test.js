@@ -9,6 +9,8 @@ const vm = require('node:vm');
 const ROOT = path.resolve(__dirname, '..');
 const SIDEBAR_PATH = path.join(ROOT, 'sidebar.js');
 const SIDEBAR_SOURCE = fs.readFileSync(SIDEBAR_PATH, 'utf8');
+const API_CONFIG_PATH = path.join(ROOT, 'api_config.js');
+const API_CONFIG_SOURCE = fs.readFileSync(API_CONFIG_PATH, 'utf8');
 
 function toPlain(value) {
   return JSON.parse(JSON.stringify(value));
@@ -32,6 +34,8 @@ function createSidebarContext(options = {}) {
       }
     },
     URL,
+    TextDecoder,
+    AbortController,
     setTimeout: options.setTimeout || setTimeout,
     clearTimeout: options.clearTimeout || clearTimeout,
     Worker: options.Worker,
@@ -41,7 +45,14 @@ function createSidebarContext(options = {}) {
       error() {}
     }
   });
+  vm.runInContext(API_CONFIG_SOURCE, context, { filename: API_CONFIG_PATH });
   vm.runInContext(SIDEBAR_SOURCE, context, { filename: SIDEBAR_PATH });
+  vm.runInContext(`
+    currentApiKey = 'unit-test-key';
+    currentApiType = 'openai';
+    currentApiEndpoint = 'https://api.example.test/v1/chat/completions';
+    currentModelName = 'unit-test-model';
+  `, context);
   return {
     context,
     chrome: context.chrome,
@@ -164,7 +175,7 @@ test('API history is snapshotted at enqueue time and keeps a same-millisecond us
   const sameMillisecondHistory = buildBoundedApiHistory([
     { role: 'user', parts: [{ text: 'must survive' }], timestamp: 9001 },
     { role: 'model', parts: [{ text: 'Thinking' }], timestamp: 9001, isThinking: true }
-  ]);
+  ], 'openai');
   assert.deepEqual(toPlain(sameMillisecondHistory), [
     { role: 'user', content: 'must survive' }
   ]);

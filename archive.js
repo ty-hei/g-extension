@@ -5,7 +5,7 @@ document.addEventListener('DOMContentLoaded', async function () {
     let currentApiKey = '';
     let currentApiType = 'gemini';
     let currentApiEndpoint = '';
-    let currentModelName = 'gemini-1.5-flash';
+    let currentModelName = globalThis.GExtensionApi?.DEFAULT_GEMINI_MODEL || 'gemini-3.5-flash';
     let activeChat = null; // Track active chat for sending messages
     let activeChatIdentity = null;
     let isArchiveRequestInFlight = false;
@@ -40,6 +40,15 @@ document.addEventListener('DOMContentLoaded', async function () {
         } catch (e) {
             console.error("Error loading API configuration:", e);
         }
+    }
+
+    function snapshotCurrentApiConfig() {
+        return GExtensionApi.snapshotConfiguration({
+            apiKey: currentApiKey,
+            apiType: currentApiType,
+            apiEndpoint: currentApiEndpoint,
+            modelName: currentModelName
+        }, { allowLoopbackHttp: true });
     }
 
     // --- DOM Elements ---
@@ -347,7 +356,10 @@ document.addEventListener('DOMContentLoaded', async function () {
 
     async function callApi(userMessageContent, chat) {
         const chatIdentity = getChatIdentity(chat);
-        if (!currentApiKey || !currentModelName) {
+        let apiConfig;
+        try {
+            apiConfig = snapshotCurrentApiConfig();
+        } catch (_) {
             alert(t('errorConfigIncomplete') || "API Configuration missing.");
             persistArchivedChat(chat, chatIdentity);
             return false;
@@ -362,7 +374,7 @@ document.addEventListener('DOMContentLoaded', async function () {
             historySnapshot.push({ role: 'user', parts: [{ text: userMessageContent }], timestamp: Date.now() });
         }
 
-        const apiType = currentApiType;
+        const { apiType, apiKey, apiEndpoint, modelName } = apiConfig;
         const historyForAPI = buildBoundedArchiveHistory(historySnapshot, apiType);
         const thinkingMsg = { role: 'model', parts: [{ text: t('thinking') || "Thinking..." }], timestamp: Date.now(), isThinking: true };
         chat.push(thinkingMsg);
@@ -372,12 +384,14 @@ document.addEventListener('DOMContentLoaded', async function () {
         let endpoint;
         let requestBody;
         if (apiType === 'gemini') {
-            endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${currentModelName}:streamGenerateContent?key=${currentApiKey}&alt=sse`;
+            const geminiRequest = GExtensionApi.buildGeminiRequest(apiKey, modelName, 'streamGenerateContent', { stream: true });
+            endpoint = geminiRequest.endpoint;
+            Object.assign(headers, geminiRequest.headers);
             requestBody = { contents: historyForAPI };
         } else if (apiType === 'openai') {
-            endpoint = currentApiEndpoint;
-            headers.Authorization = `Bearer ${currentApiKey}`;
-            requestBody = { model: currentModelName, messages: historyForAPI, stream: true };
+            endpoint = apiEndpoint;
+            headers.Authorization = `Bearer ${apiKey}`;
+            requestBody = { model: modelName, messages: historyForAPI, stream: true };
         } else {
             removeChatMessage(chat, thinkingMsg);
             chat.push({ role: 'model', parts: [{ text: `Error: unsupported API type ${apiType}` }], timestamp: Date.now() });
@@ -695,6 +709,9 @@ document.addEventListener('DOMContentLoaded', async function () {
             updateInterfaceLanguage();
             renderArchivedChatsList();
             renderEmptyState();
+        }
+        if (namespace === 'sync' && (changes.apiConfigurations || changes.activeConfigurationId)) {
+            void initializeApi();
         }
     });
 

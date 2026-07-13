@@ -45,6 +45,7 @@ function createFakeElement(tagName = 'div') {
     textContent: '',
     innerHTML: '',
     lastElementChild: null,
+    focus() {},
     addEventListener(type, listener) {
       if (!listeners.has(type)) listeners.set(type, []);
       listeners.get(type).push(listener);
@@ -98,6 +99,7 @@ function findDescendants(root, selector) {
 }
 
 function createSidebarVm(options = {}) {
+  const apiConfigSource = fs.readFileSync(path.join(ROOT, 'api_config.js'), 'utf8');
   const source = fs.readFileSync(path.join(ROOT, 'sidebar.js'), 'utf8');
   const listeners = new Map();
   const document = options.document || {
@@ -129,6 +131,7 @@ function createSidebarVm(options = {}) {
     fetch: options.fetch,
     console: options.console || { log() {}, warn() {}, error() {} }
   });
+  vm.runInContext(apiConfigSource, context, { filename: path.join(ROOT, 'api_config.js') });
   vm.runInContext(source, context, { filename: path.join(ROOT, 'sidebar.js') });
   return {
     context,
@@ -144,6 +147,7 @@ function createSidebarVm(options = {}) {
 }
 
 async function createArchiveVm(options = {}) {
+  const apiConfigPath = path.join(ROOT, 'api_config.js');
   const sourcePath = path.join(ROOT, 'archive.js');
   const originalSource = fs.readFileSync(sourcePath, 'utf8');
   const marker = '    loadArchivedChats();\n});';
@@ -246,6 +250,7 @@ async function createArchiveVm(options = {}) {
         return `test-uuid-${uuidIndex}`;
       }
     },
+    URL,
     TextDecoder,
     TextEncoder,
     AbortController,
@@ -258,6 +263,7 @@ async function createArchiveVm(options = {}) {
     renderSafeMarkdown: options.renderSafeMarkdown || (text => String(text)),
     console: options.console || { log() {}, warn() {}, error() {} }
   });
+  vm.runInContext(fs.readFileSync(apiConfigPath, 'utf8'), context, { filename: apiConfigPath });
   vm.runInContext(exposedSource, context, { filename: sourcePath });
   const ready = domListeners.get('DOMContentLoaded');
   if (!ready) throw new Error('archive.js did not register DOMContentLoaded');
