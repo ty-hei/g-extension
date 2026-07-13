@@ -251,7 +251,7 @@ test('invalid and sub-unit DOM budgets fall back, while valid fractions floor be
     Readability,
     maxDomNodes: 2.9
   }));
-  assert.equal(result.extraction.strategy, 'visible');
+  assert.equal(result.extraction.strategy, 'none');
   assert.equal(fixture.state.readerCalls, 0);
   assert.match(result.warnings[0].message, /limit of 2/);
 });

@@ -261,7 +261,7 @@
     }
   }
 
-  function extractReaderContent(documentRef, readabilityConstructor, maxDomNodes, maxTextChars, result) {
+  function extractReaderContent(documentRef, readabilityConstructor, maxDomNodes, maxTextChars, result, knownNodeCount) {
     if (typeof readabilityConstructor !== "function") {
       result.warnings.push(createIssue(
         "READABILITY_UNAVAILABLE",
@@ -272,7 +272,7 @@
       return null;
     }
 
-    var nodeCount = countDomNodes(documentRef, result);
+    var nodeCount = knownNodeCount !== undefined ? knownNodeCount : countDomNodes(documentRef, result);
     if (nodeCount !== null && nodeCount > maxDomNodes) {
       result.warnings.push(createIssue(
         "READER_DOM_LIMIT_EXCEEDED",
@@ -465,17 +465,31 @@
         return result;
       }
 
-      var visibleContent = extractVisibleText(documentRef, maxTextChars, result);
+      var nodeCount = countDomNodes(documentRef, result);
+      var visibleContent = null;
+      var domLimitExceeded = nodeCount !== null && nodeCount > maxDomNodes;
+      if (domLimitExceeded) {
+        result.warnings.push(createIssue(
+          "DOM_LIMIT_EXCEEDED",
+          "extraction-preflight",
+          "Page extraction was skipped because the document contains " + nodeCount +
+            " elements, exceeding the limit of " + maxDomNodes + ".",
+          false
+        ));
+      } else {
+        visibleContent = extractVisibleText(documentRef, maxTextChars, result);
+      }
       var readerContent = null;
 
-      if (requestedMode === "reader" || requestedMode === "both") {
+      if (!domLimitExceeded && (requestedMode === "reader" || requestedMode === "both")) {
         var readabilityConstructor = safeOptions.Readability || global.Readability;
         readerContent = extractReaderContent(
           documentRef,
           readabilityConstructor,
           maxDomNodes,
           maxTextChars,
-          result
+          result,
+          nodeCount
         );
         applyReaderMetadata(result, readerContent);
       }

@@ -181,23 +181,34 @@ test('API history is snapshotted at enqueue time and keeps a same-millisecond us
   ]);
 });
 
-test('a queued terminal link job is not claimed until it owns the global API slot', async function () {
+test('a queued terminal link job is claimed immediately but delivered only after it owns the API slot', async function () {
   const loaded = createSidebarContext();
   let releaseQueue;
   const blocker = new Promise(resolve => {
     releaseQueue = resolve;
   });
   const messages = [];
+  const deliveries = [];
 
   loaded.chrome.runtime.sendMessage = async function (message) {
     messages.push(toPlain(message));
-    return { success: true, claimed: false };
+    return {
+      success: true,
+      claimed: true,
+      claimToken: 'claim-token',
+      job: { requestId: 'wait-for-api-slot', windowId: 7, status: 'completed' }
+    };
+  };
+  loaded.context.__consumeClaimed = async function (job) {
+    deliveries.push(toPlain(job));
+    return true;
   };
   loaded.context.__queueBlocker = blocker;
   loaded.assign(`
     currentWindowId = 7;
     apiRequestQueue = globalThis.__queueBlocker;
     queuedLinkJobIds.clear();
+    consumeClaimedLinkJob = globalThis.__consumeClaimed;
   `);
 
   const queueTerminalLinkJob = loaded.getBinding('queueTerminalLinkJob');
@@ -207,15 +218,17 @@ test('a queued terminal link job is not claimed until it owns the global API slo
     status: 'completed'
   });
   await flushAsyncWork();
-  assert.deepEqual(messages, []);
-
-  releaseQueue();
-  await flushAsyncWork(8);
   assert.deepEqual(messages, [{
     action: 'claimLinkJob',
     requestId: 'wait-for-api-slot',
     windowId: 7
   }]);
+  assert.deepEqual(deliveries, []);
+
+  releaseQueue();
+  await flushAsyncWork(8);
+  assert.equal(messages.length, 1);
+  assert.equal(deliveries.length, 1);
 });
 
 test('stream idle timeout aborts the request controller and rejects a pending reader', async function () {

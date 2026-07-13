@@ -246,9 +246,13 @@ test('loaded-job processing completes extraction and stores only the compact res
     status: 'complete'
   });
   await writeLinkJob(makeJob('process-success', { status: 'loading', tabId }));
-  loaded.context.setTimeout = callback => {
-    callback();
-    return 1;
+  const originalSetTimeout = loaded.context.setTimeout;
+  loaded.context.setTimeout = (callback, delay) => {
+    if (delay === 400) {
+      callback();
+      return 1;
+    }
+    return originalSetTimeout(callback, delay);
   };
   loaded.operations.length = 0;
 
@@ -287,10 +291,14 @@ test('loaded-job processing rechecks the deadline after settling and skips scrip
     status: 'complete'
   });
   await writeLinkJob(makeJob('deadline-during-settle', { status: 'loading', tabId }));
-  loaded.context.setTimeout = callback => {
-    loaded.sessionData['gExtensionLinkJob:deadline-during-settle'].deadline = Date.now() - 1;
-    callback();
-    return 1;
+  const originalSetTimeout = loaded.context.setTimeout;
+  loaded.context.setTimeout = (callback, delay) => {
+    if (delay === 400) {
+      loaded.sessionData['gExtensionLinkJob:deadline-during-settle'].deadline = Date.now() - 1;
+      callback();
+      return 1;
+    }
+    return originalSetTimeout(callback, delay);
   };
   loaded.operations.length = 0;
 
@@ -335,9 +343,13 @@ test('loaded-job processing preserves extractor failure semantics', async functi
     status: 'complete'
   });
   await writeLinkJob(makeJob('process-extractor-failure', { status: 'loading', tabId }));
-  loaded.context.setTimeout = callback => {
-    callback();
-    return 1;
+  const originalSetTimeout = loaded.context.setTimeout;
+  loaded.context.setTimeout = (callback, delay) => {
+    if (delay === 400) {
+      callback();
+      return 1;
+    }
+    return originalSetTimeout(callback, delay);
   };
 
   await processLoadedLinkJob('process-extractor-failure');

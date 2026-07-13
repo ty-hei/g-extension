@@ -50,6 +50,7 @@ let linkJobsRefreshRunning = false;
 let linkJobsRefreshRequested = false;
 let linkJobsRefreshPromise = Promise.resolve();
 let apiRequestQueue = Promise.resolve();
+let pendingApiTaskCount = 0;
 const DEFAULT_REGEX_PATTERN = '^\\s*(.+\\S)\\s*$';
 const DEFAULT_REGEX_FLAGS = 'gm';
 const REGEX_PREVIEW_DEBOUNCE_MS = 180;
@@ -62,6 +63,10 @@ const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 const API_REQUEST_TIMEOUT_MS = 2 * 60 * 1000;
 const API_STREAM_IDLE_TIMEOUT_MS = 30 * 1000;
 const IMAGE_FETCH_TIMEOUT_MS = 30 * 1000;
+const MAX_API_QUEUE_DEPTH = 6;
+const MAX_API_RESPONSE_BYTES = 2 * 1024 * 1024;
+const MAX_API_RESPONSE_CHARS = 200000;
+const MAX_ERROR_RESPONSE_BYTES = 16 * 1024;
 
 // --- 翻译字典 ---
 const translations = {
@@ -154,6 +159,10 @@ const translations = {
         networkErr: '网络连接失败。请检查您的网络连接并重试。',
         apiCommErr: '与API通讯时发生错误。',
         apiTimeout: 'API 请求超时，已停止本次请求。',
+        requestBusy: '当前仍有请求正在处理，请等待完成后再清空或分割对话。',
+        requestQueueFull: '请求队列已满，请等待当前请求完成后重试。',
+        responseTooLarge: 'API 响应超过安全大小上限，已停止接收。',
+        streamIncomplete: 'API 流式响应未正常结束，未保存不完整回答。',
         describeImage: "请描述这张图片。",
         viewArchivedBtnCount: "查看已存档对话",
         characters: "字符",
@@ -254,6 +263,10 @@ const translations = {
         networkErr: 'Network connection failed.',
         apiCommErr: 'Error communicating with API.',
         apiTimeout: 'The API request timed out and was stopped.',
+        requestBusy: 'A request is still running. Wait for it to finish before clearing or splitting the conversation.',
+        requestQueueFull: 'The request queue is full. Wait for an active request to finish and try again.',
+        responseTooLarge: 'The API response exceeded the safe size limit and was stopped.',
+        streamIncomplete: 'The API stream ended unexpectedly, so the partial answer was not saved.',
         describeImage: "Please describe this image.",
         viewArchivedBtnCount: "Archived Chats",
         characters: "characters",
@@ -613,12 +626,16 @@ async function initialize() {
     if (clearSelectedImageButton) clearSelectedImageButton.addEventListener('click', clearSelectedImagePreview);
     if (clearAllHistoryButton) {
         clearAllHistoryButton.addEventListener('click', () => {
+            if (pendingApiTaskCount > 0) {
+                showTemporaryStatus(t('requestBusy'));
+                return;
+            }
             if (confirm(t('confirmClearHistory'))) {
                 allChats = [];
                 currentChat = [];
                 saveChatHistory();
                 renderCurrentChat();
-                addMessageToChat({ role: 'model', parts: [{ text: t('historyCleared') }], timestamp: Date.now() });
+                showTemporaryStatus(t('historyCleared'));
             }
         });
     }
@@ -1178,6 +1195,10 @@ function updateArchivedChatsButtonCount() {
 }
 
 function handleSplitChat() {
+    if (pendingApiTaskCount > 0) {
+        showTemporaryStatus(t('requestBusy'));
+        return false;
+    }
     const chatToProcess = currentChat.filter(msg => !(msg.isThinking || msg.isTempStatus));
 
     if (chatToProcess.length > 0) {
@@ -1201,8 +1222,8 @@ function handleSplitChat() {
 
     currentChat = [];
     renderCurrentChat();
-    addMessageToChat({ role: 'model', parts: [{ text: t('splitChatSuccess') }], timestamp: Date.now() });
-    saveCurrentChat();
+    showTemporaryStatus(t('splitChatSuccess'));
+    return true;
 }
 
 
@@ -1399,7 +1420,7 @@ function queueTerminalLinkJob(job) {
         return;
     }
     queuedLinkJobIds.add(job.requestId);
-    const queuedRequest = enqueueApiTask(async () => {
+    const queuedRequest = (async () => {
         const claimResponse = await chrome.runtime.sendMessage({
             action: 'claimLinkJob',
             requestId: job.requestId,
@@ -1413,21 +1434,22 @@ function queueTerminalLinkJob(job) {
             return false;
         }
         try {
-            await consumeClaimedLinkJob(
-                claimResponse.job,
-                claimResponse.claimToken,
-                (prompt, isSummary, imageUrl, containsUntrustedWebContent) =>
-                    performApiCall(prompt, isSummary, imageUrl, containsUntrustedWebContent, [], apiConfig)
-            );
+            return await enqueueApiTask(() => consumeClaimedLinkJob(
+                    claimResponse.job,
+                    claimResponse.claimToken,
+                    (prompt, isSummary, imageUrl, containsUntrustedWebContent) =>
+                        performApiCall(prompt, isSummary, imageUrl, containsUntrustedWebContent, [], apiConfig)
+                ));
         } catch (error) {
             console.error('Sidebar: failed to consume claimed link job', job.requestId, error);
             await releaseClaimedLinkJob(claimResponse.job, claimResponse.claimToken, error).catch(releaseError => {
                 console.error('Sidebar: failed to release claimed link job', job.requestId, releaseError);
                 scheduleLinkJobRetry(job.requestId, claimResponse.job?.claim?.expiresAt || (Date.now() + 1000));
             });
+            if (error?.code === 'API_QUEUE_FULL') showTemporaryStatus(error.message);
+            return false;
         }
-        return true;
-    });
+    })();
     queuedRequest.catch(error => {
         console.error('Sidebar: link summary queue failed', job.requestId, error);
     }).finally(() => {
@@ -1557,6 +1579,18 @@ function removeMessageByContentCheck(conditionFn) {
         return true;
     }
     return false;
+}
+
+function showTemporaryStatus(text, durationMs = 4000) {
+    const message = addMessageToChat({
+        role: 'model',
+        parts: [{ text }],
+        timestamp: Date.now(),
+        isTempStatus: true,
+        excludeFromApiHistory: true
+    });
+    setTimeout(() => removeMessageByContentCheck(candidate => candidate === message), durationMs);
+    return message;
 }
 
 
@@ -1809,9 +1843,26 @@ function buildBoundedApiHistory(historySnapshot, apiType) {
 }
 
 function enqueueApiTask(task) {
+    if (pendingApiTaskCount >= MAX_API_QUEUE_DEPTH) {
+        const error = new Error(t('requestQueueFull'));
+        error.code = 'API_QUEUE_FULL';
+        return Promise.reject(error);
+    }
+    pendingApiTaskCount += 1;
+    updateConversationMutationControls();
     const queuedRequest = apiRequestQueue.catch(() => {}).then(task);
-    apiRequestQueue = queuedRequest.catch(() => false);
-    return queuedRequest;
+    const trackedRequest = queuedRequest.finally(() => {
+        pendingApiTaskCount = Math.max(0, pendingApiTaskCount - 1);
+        updateConversationMutationControls();
+    });
+    apiRequestQueue = trackedRequest.catch(() => false);
+    return trackedRequest;
+}
+
+function updateConversationMutationControls() {
+    const disabled = pendingApiTaskCount > 0;
+    if (splitChatButton) splitChatButton.disabled = disabled;
+    if (clearAllHistoryButton) clearAllHistoryButton.disabled = disabled;
 }
 
 function createTimeoutError(message = t('apiTimeout')) {
@@ -1819,6 +1870,41 @@ function createTimeoutError(message = t('apiTimeout')) {
     error.name = 'TimeoutError';
     error.code = 'API_TIMEOUT';
     return error;
+}
+
+function createResponseLimitError() {
+    const error = new Error(t('responseTooLarge'));
+    error.code = 'API_RESPONSE_TOO_LARGE';
+    return error;
+}
+
+function createIncompleteStreamError() {
+    const error = new Error(t('streamIncomplete'));
+    error.code = 'API_STREAM_INCOMPLETE';
+    return error;
+}
+
+async function readBoundedResponseText(response, maxBytes = MAX_ERROR_RESPONSE_BYTES) {
+    if (!response?.body?.getReader) {
+        return String(await response.text()).slice(0, maxBytes);
+    }
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let output = '';
+    let bytes = 0;
+    try {
+        while (bytes < maxBytes) {
+            const { value, done } = await reader.read();
+            if (done) break;
+            bytes += value?.byteLength || 0;
+            if (bytes > maxBytes) break;
+            output += decoder.decode(value, { stream: true });
+        }
+        output += decoder.decode();
+        return output.slice(0, maxBytes);
+    } finally {
+        await reader.cancel().catch(() => {});
+    }
 }
 
 async function fetchImageBlobWithinBudget(imageUrl) {
@@ -1833,8 +1919,27 @@ async function fetchImageBlobWithinBudget(imageUrl) {
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const declaredSize = Number(response.headers.get('content-length'));
         if (Number.isFinite(declaredSize) && declaredSize > MAX_IMAGE_BYTES) throw new Error(t('imageTooLarge'));
-        const blob = await response.blob();
-        if (blob.size > MAX_IMAGE_BYTES) throw new Error(t('imageTooLarge'));
+        let blob;
+        if (response.body?.getReader) {
+            const bodyReader = response.body.getReader();
+            const chunks = [];
+            let receivedBytes = 0;
+            try {
+                while (true) {
+                    const { value, done } = await bodyReader.read();
+                    if (done) break;
+                    receivedBytes += value?.byteLength || 0;
+                    if (receivedBytes > MAX_IMAGE_BYTES) throw new Error(t('imageTooLarge'));
+                    chunks.push(value);
+                }
+            } finally {
+                await bodyReader.cancel().catch(() => {});
+            }
+            blob = new Blob(chunks, { type: response.headers.get('content-type') || '' });
+        } else {
+            blob = await response.blob();
+            if (blob.size > MAX_IMAGE_BYTES) throw new Error(t('imageTooLarge'));
+        }
         const mimeType = blob.type || 'application/octet-stream';
         if (!mimeType.startsWith('image/')) throw new Error(`Invalid MIME: ${mimeType}`);
         return { blob, mimeType };
@@ -1874,7 +1979,11 @@ function callApi(userMessageContent, isSummary = false, imageUrl = null, contain
     const historySnapshot = snapshotCurrentChat(currentTurnId);
     return enqueueApiTask(() =>
         performApiCall(userMessageContent, isSummary, imageUrl, containsUntrustedWebContent, historySnapshot, apiConfig)
-    );
+    ).catch(error => {
+        if (error?.code !== 'API_QUEUE_FULL') throw error;
+        showTemporaryStatus(error.message);
+        return false;
+    });
 }
 
 async function performApiCall(
@@ -1992,6 +2101,8 @@ async function performApiCall(
     const requestController = new AbortController();
     let requestTimedOut = false;
     let reader = null;
+    let aiMessage = null;
+    let aiResponseText = '';
     const requestTimeout = setTimeout(() => {
         requestTimedOut = true;
         requestController.abort();
@@ -2009,7 +2120,7 @@ async function performApiCall(
         if (!response.ok) {
             let friendlyErrorMessage = '';
             let trustedOptionsLink = false;
-            const errorText = await response.text();
+            const errorText = await readBoundedResponseText(response);
             let errorDetails = '';
             try {
                 const errorJson = JSON.parse(errorText);
@@ -2040,7 +2151,8 @@ async function performApiCall(
                 role: 'model',
                 parts: [{ text: friendlyErrorMessage }],
                 timestamp: Date.now(),
-                trustedOptionsLink
+                trustedOptionsLink,
+                excludeFromApiHistory: true
             });
             return false;
         }
@@ -2048,16 +2160,18 @@ async function performApiCall(
         if (!response.body) throw new Error('The API response did not include a readable stream.');
         reader = response.body.getReader();
         const decoder = new TextDecoder();
-        let aiResponseText = '';
-        let aiMessage = null;
         let buffer = '';
         let streamComplete = false;
+        let providerFinished = false;
+        let responseBytes = 0;
 
         while (!streamComplete) {
             const { value, done } = await readStreamChunkWithIdleTimeout(reader, requestController);
             if (done) {
                 buffer += decoder.decode();
             } else {
+                responseBytes += value?.byteLength || 0;
+                if (responseBytes > MAX_API_RESPONSE_BYTES) throw createResponseLimitError();
                 buffer += decoder.decode(value, { stream: true });
             }
 
@@ -2071,6 +2185,7 @@ async function performApiCall(
                 const jsonStr = line.slice(5).trimStart();
                 if (jsonStr === '[DONE]') {
                     streamComplete = true;
+                    providerFinished = true;
                     break;
                 }
 
@@ -2079,18 +2194,29 @@ async function performApiCall(
                     let chunkText = '';
 
                     if (apiType === 'gemini') {
+                        if (data.candidates?.some(candidate => candidate.finishReason)) providerFinished = true;
                         if (data.candidates && data.candidates[0]?.content?.parts) {
                             chunkText = data.candidates[0].content.parts.map(part => part.text).join("");
                         }
                     } else if (apiType === 'openai') {
+                        if (data.choices?.some(choice => choice.finish_reason)) providerFinished = true;
                         if (data.choices && data.choices[0]?.delta?.content) {
                             chunkText = data.choices[0].delta.content;
                         }
                     }
 
                     if (chunkText) {
+                        if (aiResponseText.length + chunkText.length > MAX_API_RESPONSE_CHARS) {
+                            throw createResponseLimitError();
+                        }
                         if (!aiMessage) {
-                            aiMessage = addMessageToChat({ role: 'model', parts: [{ text: '' }], timestamp: Date.now() });
+                            aiMessage = addMessageToChat({
+                                role: 'model',
+                                parts: [{ text: '' }],
+                                timestamp: Date.now(),
+                                isStreaming: true,
+                                excludeFromApiHistory: true
+                            });
                             // Store reference to the DOM element for this streaming message
                             streamingMessageElement = chatOutput.lastElementChild;
                         }
@@ -2100,12 +2226,14 @@ async function performApiCall(
                         updateStreamingMessage(aiResponseText);
                     }
                 } catch (error) {
+                    if (error?.code === 'API_RESPONSE_TOO_LARGE') throw error;
                     console.warn('Error parsing stream chunk:', error, 'Chunk:', jsonStr);
                 }
             }
             if (done) break;
         }
 
+        if (!providerFinished) throw createIncompleteStreamError();
         if (aiMessage) {
             if (apiType === 'gemini' && buffer.startsWith('data: ')) {
                 try {
@@ -2117,6 +2245,8 @@ async function performApiCall(
                 } catch (e) { /* Ignore if buffer is not valid JSON */ }
             }
             // Apply markdown formatting to the final message
+            delete aiMessage.isStreaming;
+            delete aiMessage.excludeFromApiHistory;
             finalizeStreamingMessage();
             saveCurrentChat();
             return true;
@@ -2128,15 +2258,23 @@ async function performApiCall(
     } catch (error) {
         console.error(`Error calling or streaming from ${apiType} API:`, error);
         removeMessageByContentCheck(msg => msg.isThinking && msg.timestamp === thinkingMessage.timestamp);
+        if (aiMessage) removeMessageByContentCheck(msg => msg === aiMessage);
         let friendlyError = t('apiCommErr');
         if (requestTimedOut || error?.code === 'API_TIMEOUT' || error?.name === 'AbortError') {
             friendlyError = t('apiTimeout');
         } else if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
             friendlyError = t('networkErr');
+        } else if (error?.code === 'API_RESPONSE_TOO_LARGE' || error?.code === 'API_STREAM_INCOMPLETE') {
+            friendlyError = error.message;
         } else {
             friendlyError += ` ${error.message}`;
         }
-        addMessageToChat({ role: 'model', parts: [{ text: friendlyError }], timestamp: Date.now() });
+        addMessageToChat({
+            role: 'model',
+            parts: [{ text: friendlyError }],
+            timestamp: Date.now(),
+            excludeFromApiHistory: true
+        });
         return false;
     } finally {
         clearTimeout(requestTimeout);
@@ -2171,7 +2309,7 @@ function addMessageToChat(message) {
     const messageWithTimestamp = { ...message, timestamp: message.timestamp || Date.now() };
     currentChat.push(messageWithTimestamp);
     renderCurrentChat();
-    if (!message.isTempStatus && !message.isThinking) {
+    if (!message.isTempStatus && !message.isThinking && !message.isStreaming) {
         saveCurrentChat();
     }
     return messageWithTimestamp;

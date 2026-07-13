@@ -15,6 +15,8 @@ document.addEventListener('DOMContentLoaded', async function () {
     const MAX_ARCHIVE_HISTORY_CHARS = 40000;
     const ARCHIVE_API_TIMEOUT_MS = 2 * 60 * 1000;
     const ARCHIVE_STREAM_IDLE_TIMEOUT_MS = 30 * 1000;
+    const MAX_ARCHIVE_RESPONSE_BYTES = 2 * 1024 * 1024;
+    const MAX_ARCHIVE_RESPONSE_CHARS = 200000;
 
     // --- API Initialization ---
     async function initializeApi() {
@@ -310,6 +312,12 @@ document.addEventListener('DOMContentLoaded', async function () {
         return error;
     }
 
+    function archiveStreamError(code, message) {
+        const error = new Error(message);
+        error.code = code;
+        return error;
+    }
+
     async function readArchiveStreamChunk(reader, controller) {
         let timeout;
         try {
@@ -331,8 +339,13 @@ document.addEventListener('DOMContentLoaded', async function () {
         const decoder = new TextDecoder();
         let buffer = '';
         let streamComplete = false;
+        let responseBytes = 0;
         while (!streamComplete) {
             const { done, value } = await readArchiveStreamChunk(reader, controller);
+            responseBytes += value?.byteLength || 0;
+            if (responseBytes > MAX_ARCHIVE_RESPONSE_BYTES) {
+                throw archiveStreamError('API_RESPONSE_TOO_LARGE', 'API response exceeded the safe size limit.');
+            }
             buffer += done ? decoder.decode() : decoder.decode(value, { stream: true });
             const lines = buffer.split('\n');
             buffer = done ? '' : lines.pop();
@@ -344,14 +357,18 @@ document.addEventListener('DOMContentLoaded', async function () {
                     streamComplete = true;
                     break;
                 }
+                let payload;
                 try {
-                    onPayload(JSON.parse(dataText));
+                    payload = JSON.parse(dataText);
                 } catch (error) {
                     console.warn('Archive: invalid SSE payload', error);
+                    continue;
                 }
+                onPayload(payload);
             }
             if (done) break;
         }
+        return { doneMarkerSeen: streamComplete };
     }
 
     async function callApi(userMessageContent, chat) {
@@ -419,7 +436,13 @@ document.addEventListener('DOMContentLoaded', async function () {
             if (!response.body) throw new Error('The API response did not include a readable stream.');
 
             removeChatMessage(chat, thinkingMsg);
-            aiMsg = { role: 'model', parts: [{ text: '' }], timestamp: Date.now() };
+            aiMsg = {
+                role: 'model',
+                parts: [{ text: '' }],
+                timestamp: Date.now(),
+                isStreaming: true,
+                excludeFromApiHistory: true
+            };
             chat.push(aiMsg);
             renderChatDetails(chat, getChatTitle(chat));
             const allMessages = chatDetailContainer.querySelectorAll('.message');
@@ -427,28 +450,48 @@ document.addEventListener('DOMContentLoaded', async function () {
             reader = response.body.getReader();
 
             let responseText = '';
-            await consumeArchiveSse(reader, controller, data => {
+            let providerFinished = false;
+            const streamState = await consumeArchiveSse(reader, controller, data => {
+                if (apiType === 'gemini' && data.candidates?.some(candidate => candidate.finishReason)) {
+                    providerFinished = true;
+                }
+                if (apiType === 'openai' && data.choices?.some(choice => choice.finish_reason)) {
+                    providerFinished = true;
+                }
                 const chunkText = apiType === 'gemini'
                     ? data.candidates?.[0]?.content?.parts?.map(part => part.text || '').join('') || ''
                     : data.choices?.[0]?.delta?.content || '';
                 if (!chunkText) return;
+                if (responseText.length + chunkText.length > MAX_ARCHIVE_RESPONSE_CHARS) {
+                    throw archiveStreamError('API_RESPONSE_TOO_LARGE', 'API response exceeded the safe size limit.');
+                }
                 responseText += chunkText;
                 aiMsg.parts[0].text = responseText;
                 updateStreamingArchiveMessage(responseText, streamingArchiveMessageElement);
             });
             if (!responseText) throw new Error('The API returned an empty stream.');
+            if (!streamState.doneMarkerSeen && !providerFinished) {
+                throw archiveStreamError('API_STREAM_INCOMPLETE', 'API stream ended before a completion marker was received.');
+            }
 
+            delete aiMsg.isStreaming;
+            delete aiMsg.excludeFromApiHistory;
             finalizeStreamingArchiveMessage(streamingArchiveMessageElement);
             persistArchivedChat(chat, chatIdentity);
             return true;
         } catch (error) {
             console.error("API Error:", error);
             removeChatMessage(chat, thinkingMsg);
-            if (aiMsg && !aiMsg.parts[0].text) removeChatMessage(chat, aiMsg);
+            if (aiMsg) removeChatMessage(chat, aiMsg);
             const message = requestTimedOut || error?.name === 'AbortError' || error?.name === 'TimeoutError'
                 ? 'Error: API request timed out.'
                 : `Error: ${error.message}`;
-            chat.push({ role: 'model', parts: [{ text: message }], timestamp: Date.now() });
+            chat.push({
+                role: 'model',
+                parts: [{ text: message }],
+                timestamp: Date.now(),
+                excludeFromApiHistory: true
+            });
             renderChatDetails(chat, getChatTitle(chat));
             persistArchivedChat(chat, chatIdentity);
             return false;

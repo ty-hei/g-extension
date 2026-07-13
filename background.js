@@ -49,11 +49,12 @@ const LINK_JOB_CLEANUP_ALARM_PREFIX = 'gExtensionLinkJobCleanup:';
 const LINK_JOB_DELIVERY_ALARM_PREFIX = 'gExtensionLinkJobDelivery:';
 const LINK_JOB_TIMEOUT_MS = 30000;
 const LINK_JOB_RETENTION_MS = 10 * 60 * 1000;
-const LINK_JOB_CLAIM_MS = 5 * 60 * 1000;
+const LINK_JOB_CLAIM_MS = 15 * 60 * 1000;
 const LINK_JOB_RETRY_MS = 60 * 1000;
 const MAX_CONCURRENT_LINK_JOBS = 3;
 const MAX_LINK_JOB_STORAGE_BYTES = 7 * 1024 * 1024;
 const LINK_JOB_RESULT_RESERVATION_BYTES = 900 * 1024;
+const EXTRACTION_EXECUTION_TIMEOUT_MS = 15 * 1000;
 const ACTIVE_LINK_JOB_STATUSES = new Set(['creating', 'loading', 'extracting']);
 const linkJobLocks = new Map();
 let linkStorageQueue = Promise.resolve();
@@ -113,7 +114,23 @@ function isContentScriptSender(sender) {
   }
 }
 
-function validatePageUrl(rawUrl, { allowFile = true } = {}) {
+function isPrivateNetworkHostname(hostname) {
+  const value = String(hostname || '').toLowerCase().replace(/^\[|\]$/g, '');
+  if (!value) return true;
+  if (value === 'localhost' || value.endsWith('.localhost') || value.endsWith('.local')) return true;
+  if (value === '::1' || value === '0:0:0:0:0:0:0:1' || value.startsWith('fc') || value.startsWith('fd') || value.startsWith('fe8') || value.startsWith('fe9') || value.startsWith('fea') || value.startsWith('feb')) return true;
+  const parts = value.split('.');
+  if (parts.length !== 4 || parts.some(part => !/^\d+$/.test(part) || Number(part) > 255)) return false;
+  const [first, second] = parts.map(Number);
+  return first === 0
+    || first === 10
+    || first === 127
+    || (first === 169 && second === 254)
+    || (first === 172 && second >= 16 && second <= 31)
+    || (first === 192 && second === 168);
+}
+
+function validatePageUrl(rawUrl, { allowFile = true, allowPrivateNetwork = true } = {}) {
   if (typeof rawUrl !== 'string' || rawUrl.length > 8192) {
     throw new Error('Unsupported or invalid page URL.');
   }
@@ -130,6 +147,11 @@ function validatePageUrl(rawUrl, { allowFile = true } = {}) {
   }
   if (parsed.username || parsed.password) {
     throw new Error('URLs containing embedded credentials are not supported.');
+  }
+  if (!allowPrivateNetwork && isPrivateNetworkHostname(parsed.hostname)) {
+    const error = new Error('Private, loopback, and link-local addresses are not supported for link extraction.');
+    error.code = 'PRIVATE_NETWORK_URL';
+    throw error;
   }
   return parsed.href;
 }
@@ -156,17 +178,39 @@ async function resolveTargetTab(request = {}) {
   return tabs[0];
 }
 
-async function executeExtractor(tabId, extractorKind, requestId) {
+async function executeExtractor(tabId, extractorKind, requestId, expectedUrl = null) {
   const files = EXTRACTION_FILES[extractorKind];
   if (!files) throw new Error(`Unknown extraction mode: ${extractorKind}`);
 
-  const injectionResults = await chrome.scripting.executeScript({
-    target: { tabId },
-    files
+  let timeoutId;
+  const timeoutPromise = new Promise((_, reject) => {
+    timeoutId = setTimeout(() => {
+      const error = new Error('Page extraction exceeded the execution time limit.');
+      error.code = 'EXTRACTION_EXECUTION_TIMEOUT';
+      reject(error);
+    }, EXTRACTION_EXECUTION_TIMEOUT_MS);
   });
+  let injectionResults;
+  try {
+    injectionResults = await Promise.race([
+      chrome.scripting.executeScript({ target: { tabId }, files }),
+      timeoutPromise
+    ]);
+  } finally {
+    clearTimeout(timeoutId);
+  }
   const mainFrameResult = injectionResults?.find(result => result.frameId === 0) || injectionResults?.[0];
   const result = mainFrameResult?.result;
   validateExtractionResult(result);
+  if (expectedUrl) {
+    const expected = validatePageUrl(expectedUrl, { allowFile: true });
+    const extracted = validatePageUrl(result.source?.url || '', { allowFile: true });
+    if (expected !== extracted) {
+      const error = new Error('The page navigated while content was being extracted. Please try again.');
+      error.code = 'EXTRACTION_DOCUMENT_CHANGED';
+      throw error;
+    }
+  }
   return {
     ...result,
     requestId,
@@ -211,7 +255,7 @@ async function extractFromRequestedTab(request, extractorKind) {
   const requestId = request.requestId || createRequestId(extractorKind);
   const tab = await resolveTargetTab(request);
   validatePageUrl(tab.url || '', { allowFile: true });
-  const result = await executeExtractor(tab.id, extractorKind, requestId);
+  const result = await executeExtractor(tab.id, extractorKind, requestId, tab.url || '');
   result.source = {
     ...(result.source || {}),
     tabId: tab.id,
@@ -683,6 +727,8 @@ async function processLoadedLinkJob(requestId) {
       return;
     }
 
+    const currentTab = await chrome.tabs.get(currentJob.tabId);
+    validatePageUrl(currentTab.url || '', { allowFile: false, allowPrivateNetwork: false });
     const result = await executeExtractor(currentJob.tabId, 'link', requestId);
     if (!result.ok) {
       await failLinkJob(
@@ -694,7 +740,7 @@ async function processLoadedLinkJob(requestId) {
       return;
     }
 
-    validatePageUrl(result.source?.url || currentJob.sourceUrl, { allowFile: false });
+    validatePageUrl(result.source?.url || currentJob.sourceUrl, { allowFile: false, allowPrivateNetwork: false });
 
     const latestJob = await readLinkJob(requestId);
     if (!latestJob || latestJob.status !== 'extracting') return;
@@ -711,7 +757,7 @@ async function processLoadedLinkJob(requestId) {
 
 async function startLinkExtractionJob({ url, title, windowId, requestId = createRequestId('link') }) {
   if (!Number.isInteger(windowId)) throw new Error('A source window is required for link extraction.');
-  const normalizedUrl = validatePageUrl(url, { allowFile: false });
+  const normalizedUrl = validatePageUrl(url, { allowFile: false, allowPrivateNetwork: false });
   const createdAt = Date.now();
   const initialJob = {
     schemaVersion: 1,
@@ -1136,7 +1182,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     const requestId = createRequestId('link');
     try {
       if (!Number.isInteger(windowId)) throw new Error('A source window is required.');
-      validatePageUrl(linkUrl, { allowFile: false });
+      validatePageUrl(linkUrl, { allowFile: false, allowPrivateNetwork: false });
     } catch (error) {
       sendResponse({ accepted: false, requestId, error: serializeError(error) });
       return false;

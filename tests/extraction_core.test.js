@@ -263,7 +263,7 @@ test('reader parse failure falls back to visible text with a structured warning'
   assert.equal(readabilityState.parseCalls, 1);
 });
 
-test('DOM budget skips Readability before cloning and uses visible fallback', function () {
+test('DOM budget stops visible text and Readability before either can traverse an oversized page', function () {
   const fake = createFakeDocument({
     innerText: 'Text that remains available',
     nodeCount: 101
@@ -278,16 +278,15 @@ test('DOM budget skips Readability before cloning and uses visible fallback', fu
     maxDomNodes: 100
   }));
 
-  assert.equal(result.ok, true);
-  assert.equal(result.extraction.strategy, 'visible');
-  assert.equal(result.extraction.fallbackUsed, true);
-  assert.equal(result.content.text, 'Text that remains available');
+  assert.equal(result.ok, false);
+  assert.equal(result.extraction.strategy, 'none');
+  assert.equal(result.content.text, '');
   assert.equal(fake.state.nodeCountReads, 1);
   assert.equal(fake.state.cloneCalls, 0);
   assert.equal(readabilityState.constructorCalls, undefined);
   assert.equal(result.warnings.length, 1);
-  assert.equal(result.warnings[0].code, 'READER_DOM_LIMIT_EXCEEDED');
-  assert.equal(result.warnings[0].phase, 'reader-preflight');
+  assert.equal(result.warnings[0].code, 'DOM_LIMIT_EXCEEDED');
+  assert.equal(result.warnings[0].phase, 'extraction-preflight');
   assert.match(result.warnings[0].message, /101 elements/);
   assert.match(result.warnings[0].message, /limit of 100/);
 });
@@ -580,7 +579,7 @@ test('caller-provided extraction budgets cannot exceed the hard DOM and text lim
     maxDomNodes: Number.MAX_SAFE_INTEGER
   }));
 
-  assert.equal(domResult.extraction.strategy, 'visible');
+  assert.equal(domResult.extraction.strategy, 'none');
   assert.equal(oversizedDom.state.cloneCalls, 0);
   assert.equal(readabilityState.constructorCalls, undefined);
   assert.match(domResult.warnings[0].message, /limit of 50000/);

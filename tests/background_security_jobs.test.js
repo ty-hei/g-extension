@@ -117,6 +117,61 @@ test('summarizeLinkTarget ignores caller requestId and generates the job identit
   assert.equal(loaded.sessionData['gExtensionLinkJob:caller-controlled-id'], undefined);
 });
 
+test('link extraction rejects loopback, private, link-local, and credential-bearing targets', async function () {
+  const loaded = await loadBackground();
+  const validatePageUrl = loaded.getBinding('validatePageUrl');
+  const options = { allowFile: false, allowPrivateNetwork: false };
+
+  for (const url of [
+    'http://localhost/admin',
+    'http://127.0.0.1/admin',
+    'http://10.0.0.1/',
+    'http://172.16.0.1/',
+    'http://192.168.1.1/',
+    'http://169.254.169.254/latest/meta-data/',
+    'http://[::1]/'
+  ]) {
+    assert.throws(() => validatePageUrl(url, options), /not supported/);
+  }
+  assert.throws(() => validatePageUrl('https://user:pass@example.test/', options), /credentials/);
+  assert.equal(validatePageUrl('https://example.test/article', options), 'https://example.test/article');
+});
+
+test('active-tab extraction rejects a result produced after the page navigates', async function () {
+  const loaded = await loadBackground({
+    injectionResults: [{
+      frameId: 0,
+      documentId: 'document-after-navigation',
+      result: {
+        schemaVersion: 1,
+        ok: true,
+        extraction: { mode: 'visible' },
+        content: {
+          text: 'Content from the replacement page',
+          readerText: '',
+          fullText: 'Content from the replacement page',
+          charCount: 33,
+          truncated: false,
+          readerTruncated: false,
+          fullTextTruncated: false
+        },
+        source: { url: 'https://example.test/replacement', title: 'Replacement' },
+        metadata: {},
+        warnings: [],
+        error: null
+      }
+    }]
+  });
+  const executeExtractor = loaded.getBinding('executeExtractor');
+
+  await assert.rejects(
+    executeExtractor(42, 'visible', 'request-navigation-race', 'https://example.test/original'),
+    error => error &&
+      error.code === 'EXTRACTION_DOCUMENT_CHANGED' &&
+      /navigated/.test(error.message)
+  );
+});
+
 test('a timeout alarm and creating job are persisted before a temporary tab is opened', async function () {
   const loaded = await loadBackground();
   const startLinkExtractionJob = loaded.getBinding('startLinkExtractionJob');

@@ -232,3 +232,44 @@ test('archive Markdown rendering never forwards the sidebar-only options-link tr
   loaded.exports.renderChatDetails(chat, 'Trust boundary');
   assert.deepEqual(calls, [[chat[0].parts[0].text]]);
 });
+
+test('archive rolls back a partial stream that ends without a completion marker', async function () {
+  const bytes = new TextEncoder().encode('data:{"choices":[{"delta":{"content":"partial"}}]}\n');
+  let readCount = 0;
+  const loaded = await createArchiveVm({
+    apiConfigurations: [{
+      id: 'active-test-config',
+      apiKey: 'test-key',
+      apiType: 'openai',
+      apiEndpoint: 'https://api.example.test/v1/chat/completions',
+      modelName: 'test-model'
+    }],
+    activeConfigurationId: 'active-test-config',
+    fetch: async function () {
+      return {
+        ok: true,
+        status: 200,
+        body: {
+          getReader() {
+            return {
+              async read() {
+                readCount += 1;
+                return readCount === 1
+                  ? { done: false, value: bytes }
+                  : { done: true, value: undefined };
+              },
+              async cancel() {}
+            };
+          }
+        }
+      };
+    }
+  });
+  const chat = [{ role: 'user', parts: [{ text: 'question' }], timestamp: 1 }];
+  loaded.exports.setArchivedChats([chat]);
+
+  assert.equal(await loaded.exports.callApi('question', chat), false);
+  assert.equal(chat.some(message => message.parts?.[0]?.text === 'partial'), false);
+  assert.match(chat.at(-1).parts[0].text, /completion marker/);
+  assert.equal(chat.at(-1).excludeFromApiHistory, true);
+});

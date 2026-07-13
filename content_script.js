@@ -15,7 +15,8 @@ function takeSafePrefix(value, maxChars) {
 }
 
 // Read a selection only while this window has a connected side panel.
-document.addEventListener('mouseup', async () => {
+document.addEventListener('mouseup', async event => {
+    if (!event?.isTrusted) return;
     try {
         const permission = await chrome.runtime.sendMessage({ action: 'shouldCaptureSelection' });
         if (!permission?.capture) return;

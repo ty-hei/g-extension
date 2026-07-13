@@ -298,3 +298,38 @@ test('total API timeout aborts a pending request and reports the timeout-specifi
   assert.equal(messages.at(-1).parts[0].text, 'apiTimeout');
   assert.ok(cleared.includes(totalTimer));
 });
+
+test('an incomplete stream is rolled back and reported instead of being saved as a successful answer', async function () {
+  const messages = [];
+  const updates = [];
+  const reader = makeByteReader('data:{"choices":[{"delta":{"content":"partial"}}]}\n');
+  const loaded = createSidebarVm({
+    fetch: async function () {
+      return { ok: true, status: 200, body: { getReader: () => reader } };
+    }
+  });
+  installApiStubs(loaded, messages, updates);
+
+  assert.equal(await loaded.get('performApiCall')('question', false, null, false, []), false);
+  assert.equal(updates.at(-1), 'partial');
+  assert.equal(messages.at(-1).excludeFromApiHistory, true);
+  assert.equal(messages.at(-1).parts[0].text, 'streamIncomplete');
+});
+
+test('conversation mutation is blocked while queued or streaming requests exist', function () {
+  const statuses = [];
+  const loaded = createSidebarVm();
+  loaded.context.__statuses = statuses;
+  loaded.assign(`
+    pendingApiTaskCount = 1;
+    currentChat = [{ role: 'user', parts: [{ text: 'keep me' }], timestamp: 1 }];
+    archivedChats = [];
+    showTemporaryStatus = text => globalThis.__statuses.push(text);
+    t = key => key;
+  `);
+
+  assert.equal(loaded.get('handleSplitChat')(), false);
+  assert.equal(loaded.get('currentChat').length, 1);
+  assert.equal(loaded.get('archivedChats').length, 0);
+  assert.deepEqual(statuses, ['requestBusy']);
+});

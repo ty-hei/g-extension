@@ -72,7 +72,7 @@ test('selection capture asks permission before reading page selection', async fu
     }
   });
 
-  await harness.listeners.get('mouseup')();
+  await harness.listeners.get('mouseup')({ isTrusted: true });
 
   assert.deepEqual(harness.messages, [{ action: 'shouldCaptureSelection' }]);
   assert.equal(harness.selectionReads, 0);
@@ -94,7 +94,7 @@ test('permitted selection is trimmed, surrogate-safe, and bounded before messagi
     }
   });
 
-  await harness.listeners.get('mouseup')();
+  await harness.listeners.get('mouseup')({ isTrusted: true });
 
   assert.equal(harness.selectionReads, 1);
   assert.equal(harness.messages.length, 2);
@@ -114,7 +114,7 @@ test('empty selections and extension messaging failures do not leak follow-up me
       return { toString: () => ' \n\t ' };
     }
   });
-  await emptyHarness.listeners.get('mouseup')();
+  await emptyHarness.listeners.get('mouseup')({ isTrusted: true });
   assert.deepEqual(emptyHarness.messages, [{ action: 'shouldCaptureSelection' }]);
 
   const rejectedHarness = createHarness({
@@ -125,7 +125,7 @@ test('empty selections and extension messaging failures do not leak follow-up me
       throw new Error('must not be reached after permission failure');
     }
   });
-  await assert.doesNotReject(rejectedHarness.listeners.get('mouseup')());
+  await assert.doesNotReject(rejectedHarness.listeners.get('mouseup')({ isTrusted: true }));
   assert.deepEqual(rejectedHarness.messages, [{ action: 'shouldCaptureSelection' }]);
   assert.equal(rejectedHarness.selectionReads, 0);
 
@@ -138,7 +138,7 @@ test('empty selections and extension messaging failures do not leak follow-up me
       return { toString: () => 'still safe' };
     }
   });
-  await assert.doesNotReject(deliveryFailureHarness.listeners.get('mouseup')());
+  await assert.doesNotReject(deliveryFailureHarness.listeners.get('mouseup')({ isTrusted: true }));
   assert.deepEqual(deliveryFailureHarness.messages, [
     { action: 'shouldCaptureSelection' },
     { action: 'TEXT_SELECTED_FROM_PAGE', text: 'still safe' }
