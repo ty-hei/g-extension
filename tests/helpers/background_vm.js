@@ -54,6 +54,7 @@ function createChromeMock(options = {}) {
     ...(clone(options.sessionData) || {})
   };
   const syncData = clone(options.syncData) || {};
+  const localData = clone(options.localData) || {};
   const tabs = new Map();
   let nextTabId = options.firstTabId || 100;
 
@@ -89,6 +90,21 @@ function createChromeMock(options = {}) {
         async get(keys) {
           operations.push({ type: 'storage.sync.get', keys: clone(keys) });
           return selectStorageValues(syncData, keys);
+        }
+      },
+      local: {
+        async get(keys) {
+          operations.push({ type: 'storage.local.get', keys: clone(keys) });
+          return selectStorageValues(localData, keys);
+        },
+        async set(values) {
+          operations.push({ type: 'storage.local.set', values: clone(values) });
+          Object.assign(localData, clone(values));
+        },
+        async remove(keys) {
+          const keyList = Array.isArray(keys) ? keys : [keys];
+          operations.push({ type: 'storage.local.remove', keys: clone(keyList) });
+          keyList.forEach(key => delete localData[key]);
         }
       },
       session: {
@@ -188,6 +204,7 @@ function createChromeMock(options = {}) {
     operations,
     sessionData,
     syncData,
+    localData,
     tabs
   };
 }

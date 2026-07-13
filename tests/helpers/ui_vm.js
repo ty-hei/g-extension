@@ -173,8 +173,7 @@ async function createArchiveVm(options = {}) {
         },
         setCallApi: value => { callApi = value; },
         setRenderChatDetails: value => { renderChatDetails = value; },
-        triggerStorageChange: (changes, namespace = 'local') =>
-            globalThis.__archiveStorageChangeListener(changes, namespace)
+        triggerStoreChange: chats => globalThis.__triggerArchiveStoreChange(chats)
     };
     loadArchivedChats();
 });`);
@@ -211,9 +210,44 @@ async function createArchiveVm(options = {}) {
     }
   };
   let uuidIndex = 0;
+  let archiveRecords = clone(options.archivedChats || []).map((messages, index) => ({
+    id: messages?.[0]?.archiveConversationId || `archive-fixture-${index + 1}`,
+    messages: clone(messages)
+  }));
   const context = vm.createContext({
     document,
     chrome: {
+      runtime: {
+        id: 'ui-test-extension',
+        getURL(resourcePath) {
+          return `chrome-extension://ui-test-extension/${resourcePath}`;
+        },
+        async sendMessage(message) {
+          storageWrites.push(clone(message));
+          if (message.action === 'conversationStoreList') {
+            return { success: true, records: clone(archiveRecords) };
+          }
+          if (message.action === 'conversationStoreUpsert') {
+            const record = { id: message.id, messages: clone(message.messages) };
+            archiveRecords = [record, ...archiveRecords.filter(candidate => candidate.id !== message.id)];
+            return { success: true, record: clone(record) };
+          }
+          if (message.action === 'conversationStoreDelete') {
+            archiveRecords = archiveRecords.filter(candidate => candidate.id !== message.id);
+            return { success: true };
+          }
+          if (message.action === 'conversationStoreClear') {
+            archiveRecords = [];
+            return { success: true };
+          }
+          return { success: false, error: 'Unsupported test runtime action.' };
+        },
+        onMessage: {
+          addListener(listener) {
+            context.__archiveRuntimeMessageListener = listener;
+          }
+        }
+      },
       storage: {
         sync: {
           async get(keys) {
@@ -263,6 +297,17 @@ async function createArchiveVm(options = {}) {
     renderSafeMarkdown: options.renderSafeMarkdown || (text => String(text)),
     console: options.console || { log() {}, warn() {}, error() {} }
   });
+  context.__triggerArchiveStoreChange = async chats => {
+    archiveRecords = clone(chats).map((messages, index) => ({
+      id: messages?.[0]?.archiveConversationId || `archive-external-${index + 1}`,
+      messages
+    }));
+    context.__archiveRuntimeMessageListener(
+      { type: 'CONVERSATION_STORE_CHANGED', kind: 'archive' },
+      { id: 'ui-test-extension' }
+    );
+    await new Promise(resolve => setImmediate(resolve));
+  };
   vm.runInContext(fs.readFileSync(apiConfigPath, 'utf8'), context, { filename: apiConfigPath });
   vm.runInContext(exposedSource, context, { filename: sourcePath });
   const ready = domListeners.get('DOMContentLoaded');

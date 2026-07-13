@@ -142,7 +142,7 @@ test('archive API snapshots the visible history, avoids duplicating the current 
   assert.equal(chat.filter(message => message.parts?.[0]?.text === 'current question').length, 1);
   assert.equal(chat.at(-1).parts[0].text, 'Error: HTTP 503');
   assert.equal(
-    loaded.storageWrites.at(-1).geminiArchivedChats[0].at(-1).parts[0].text,
+    loaded.storageWrites.at(-1).messages.at(-1).parts[0].text,
     'Error: HTTP 503'
   );
 });
@@ -168,13 +168,11 @@ test('archive UUID stays stable across replacement and storage-change rebinding'
   assert.equal(loaded.exports.getArchivedChats()[0], replacement);
   assert.equal(loaded.exports.getActiveChat(), replacement);
   assert.equal(loaded.exports.getActiveChatIdentity(), identity);
-  assert.equal(loaded.storageWrites.at(-1).geminiArchivedChats[0][0].parts[0].text, 'replacement');
+  assert.equal(loaded.storageWrites.at(-1).messages[0].parts[0].text, 'replacement');
 
   const externallyUpdated = clone(replacement);
   externallyUpdated.push({ role: 'user', parts: [{ text: 'external append' }], timestamp: 4 });
-  loaded.exports.triggerStorageChange({
-    geminiArchivedChats: { newValue: [externallyUpdated] }
-  });
+  await loaded.exports.triggerStoreChange([externallyUpdated]);
   assert.equal(loaded.exports.getActiveChat()[2].parts[0].text, 'external append');
   assert.equal(loaded.exports.getActiveChatIdentity(), identity);
 });

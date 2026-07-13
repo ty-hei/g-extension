@@ -1,5 +1,4 @@
 // g-extension/background.js
-let geminiApiKey = null;
 let currentLanguage = 'zh';
 
 const translations = {
@@ -60,6 +59,14 @@ const linkJobLocks = new Map();
 let linkStorageQueue = Promise.resolve();
 const connectedSidebarWindows = new Map();
 const SIDEBAR_URL = chrome.runtime.getURL('sidebar.html');
+const ARCHIVE_URL = chrome.runtime.getURL('archive.html');
+const CONVERSATION_INDEX_PREFIX = 'gExtensionConversationIndex:v1:';
+const CONVERSATION_RECORD_PREFIX = 'gExtensionConversation:v1:';
+const CONVERSATION_LEGACY_KEYS = { chat: 'geminiChatHistory', archive: 'geminiArchivedChats' };
+const CONVERSATION_LIMITS = { chat: 50, archive: 200 };
+const MAX_CONVERSATION_RECORD_BYTES = 512 * 1024;
+const MAX_CONVERSATION_STORE_BYTES = 7 * 1024 * 1024;
+let conversationStorageQueue = Promise.resolve();
 const SIDEBAR_ACTIONS = new Set([
   'getAndSummarizePage',
   'extractActiveTabContent',
@@ -68,6 +75,12 @@ const SIDEBAR_ACTIONS = new Set([
   'claimLinkJob',
   'ackLinkJob',
   'releaseLinkJob'
+]);
+const CONVERSATION_ACTIONS = new Set([
+  'conversationStoreList',
+  'conversationStoreUpsert',
+  'conversationStoreDelete',
+  'conversationStoreClear'
 ]);
 const CONTENT_SCRIPT_ACTIONS = new Set([
   'openSidePanel',
@@ -100,6 +113,180 @@ function takeSafePrefix(value, maxChars) {
 
 function isSidebarSender(sender) {
   return sender?.id === chrome.runtime.id && sender?.url === SIDEBAR_URL && !sender.tab;
+}
+
+function isConversationPageSender(sender) {
+  return sender?.id === chrome.runtime.id &&
+    (sender?.url === SIDEBAR_URL || sender?.url === ARCHIVE_URL);
+}
+
+function conversationIndexKey(kind) {
+  return `${CONVERSATION_INDEX_PREFIX}${kind}`;
+}
+
+function conversationRecordKey(kind, id) {
+  return `${CONVERSATION_RECORD_PREFIX}${kind}:${id}`;
+}
+
+function validateConversationKind(kind) {
+  if (!Object.prototype.hasOwnProperty.call(CONVERSATION_LIMITS, kind)) {
+    throw new Error('Unknown conversation store kind.');
+  }
+  return kind;
+}
+
+function normalizeConversationId(value) {
+  const id = typeof value === 'string' ? value : '';
+  if (!/^[A-Za-z0-9_-]{1,100}$/.test(id)) throw new Error('Invalid conversation identity.');
+  return id;
+}
+
+function cleanConversationMessages(messages) {
+  if (!Array.isArray(messages)) throw new Error('Conversation messages must be an array.');
+  const clean = messages
+    .filter(message => message && typeof message === 'object' && !message.isThinking && !message.isTempStatus)
+    .map(message => {
+      const { isThinking, isTempStatus, ...stored } = message;
+      return stored;
+    });
+  if (clean.length === 0) throw new Error('Conversation cannot be empty.');
+  if (clean.length > 500) throw new Error('Conversation contains too many messages.');
+  return clean;
+}
+
+function withConversationStorageLock(operation) {
+  const queued = conversationStorageQueue.catch(() => {}).then(operation);
+  conversationStorageQueue = queued.catch(() => {});
+  return queued;
+}
+
+function makeMigratedConversationId(kind, messages, usedIds) {
+  const embedded = kind === 'archive' && typeof messages?.[0]?.archiveConversationId === 'string'
+    ? messages[0].archiveConversationId.replace(/[^A-Za-z0-9_-]/g, '').slice(0, 100)
+    : '';
+  const timestamp = Number.isSafeInteger(messages?.[0]?.timestamp) ? messages[0].timestamp : Date.now();
+  const base = embedded || `${kind}-${timestamp}`;
+  let id = base;
+  let suffix = 2;
+  while (usedIds.has(id)) {
+    id = `${base.slice(0, 90)}-${suffix}`;
+    suffix += 1;
+  }
+  usedIds.add(id);
+  return id;
+}
+
+async function ensureConversationStoreMigrated(kind) {
+  validateConversationKind(kind);
+  const indexKey = conversationIndexKey(kind);
+  const existing = await chrome.storage.local.get([indexKey]);
+  if (Array.isArray(existing[indexKey])) return existing[indexKey];
+
+  const legacyKey = CONVERSATION_LEGACY_KEYS[kind];
+  const legacyResult = await chrome.storage.local.get([legacyKey]);
+  const legacy = Array.isArray(legacyResult[legacyKey]) ? legacyResult[legacyKey] : [];
+  const now = Date.now();
+  const usedIds = new Set();
+  const values = {};
+  const index = [];
+  legacy.slice(0, CONVERSATION_LIMITS[kind]).forEach((messages, position) => {
+    try {
+      const clean = cleanConversationMessages(messages);
+      const id = makeMigratedConversationId(kind, clean, usedIds);
+      const updatedAt = Number.isSafeInteger(clean.at(-1)?.timestamp) ? clean.at(-1).timestamp : now - position;
+      const record = { schemaVersion: 1, id, kind, updatedAt, messages: clean };
+      if (estimateStoredBytes(conversationRecordKey(kind, id), record) > MAX_CONVERSATION_RECORD_BYTES) return;
+      values[conversationRecordKey(kind, id)] = record;
+      index.push({ id, updatedAt });
+    } catch (_) {
+      // Invalid legacy records are omitted during the one-time migration.
+    }
+  });
+  values[indexKey] = index;
+  await chrome.storage.local.set(values);
+  if (legacy.length > 0) await chrome.storage.local.remove(legacyKey);
+  return index;
+}
+
+async function readConversationStore(kind) {
+  const index = await ensureConversationStoreMigrated(kind);
+  const keys = index.map(entry => conversationRecordKey(kind, entry.id));
+  const result = keys.length > 0 ? await chrome.storage.local.get(keys) : {};
+  const records = index
+    .map(entry => result[conversationRecordKey(kind, entry.id)])
+    .filter(record => record && Array.isArray(record.messages));
+  return records;
+}
+
+async function pruneConversationStore(kind, index, protectedId) {
+  const limit = CONVERSATION_LIMITS[kind];
+  const sorted = [...index].sort((a, b) => b.updatedAt - a.updatedAt);
+  const keys = sorted.map(entry => conversationRecordKey(kind, entry.id));
+  const result = keys.length > 0 ? await chrome.storage.local.get(keys) : {};
+  let totalBytes = estimateStoredBytes(conversationIndexKey(kind), sorted);
+  const kept = [];
+  const removed = [];
+  for (const entry of sorted) {
+    const key = conversationRecordKey(kind, entry.id);
+    const record = result[key];
+    const bytes = record ? estimateStoredBytes(key, record) : 0;
+    const canKeep = record && kept.length < limit && (totalBytes + bytes <= MAX_CONVERSATION_STORE_BYTES || entry.id === protectedId);
+    if (canKeep) {
+      kept.push(entry);
+      totalBytes += bytes;
+    } else {
+      removed.push(key);
+    }
+  }
+  if (removed.length > 0) await chrome.storage.local.remove(removed);
+  await chrome.storage.local.set({ [conversationIndexKey(kind)]: kept });
+  return kept;
+}
+
+async function upsertConversation(kind, id, messages) {
+  return withConversationStorageLock(async () => {
+    validateConversationKind(kind);
+    const clean = cleanConversationMessages(messages);
+    const normalizedId = id ? normalizeConversationId(id) : createRequestId(kind);
+    const updatedAt = Date.now();
+    const record = { schemaVersion: 1, id: normalizedId, kind, updatedAt, messages: clean };
+    if (estimateStoredBytes(conversationRecordKey(kind, normalizedId), record) > MAX_CONVERSATION_RECORD_BYTES) {
+      throw new Error('Conversation exceeds the per-record storage limit.');
+    }
+    const index = await ensureConversationStoreMigrated(kind);
+    const nextIndex = [{ id: normalizedId, updatedAt }, ...index.filter(entry => entry.id !== normalizedId)];
+    await chrome.storage.local.set({ [conversationRecordKey(kind, normalizedId)]: record });
+    await pruneConversationStore(kind, nextIndex, normalizedId);
+    return record;
+  });
+}
+
+async function deleteConversation(kind, id) {
+  return withConversationStorageLock(async () => {
+    validateConversationKind(kind);
+    const normalizedId = normalizeConversationId(id);
+    const index = await ensureConversationStoreMigrated(kind);
+    await chrome.storage.local.remove(conversationRecordKey(kind, normalizedId));
+    await chrome.storage.local.set({
+      [conversationIndexKey(kind)]: index.filter(entry => entry.id !== normalizedId)
+    });
+    return true;
+  });
+}
+
+async function clearConversationStore(kind) {
+  return withConversationStorageLock(async () => {
+    validateConversationKind(kind);
+    const index = await ensureConversationStoreMigrated(kind);
+    const keys = index.map(entry => conversationRecordKey(kind, entry.id));
+    if (keys.length > 0) await chrome.storage.local.remove(keys);
+    await chrome.storage.local.set({ [conversationIndexKey(kind)]: [] });
+    return true;
+  });
+}
+
+function notifyConversationStoreChanged(kind) {
+  void chrome.runtime.sendMessage({ type: 'CONVERSATION_STORE_CHANGED', kind }).catch(() => {});
 }
 
 function isContentScriptSender(sender) {
@@ -949,6 +1136,13 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
 
 
 (async () => {
+  for (const area of [chrome.storage.local, chrome.storage.sync]) {
+    try {
+      await area?.setAccessLevel?.({ accessLevel: 'TRUSTED_CONTEXTS' });
+    } catch (error) {
+      console.warn('Background: could not restrict storage access to trusted extension contexts', error);
+    }
+  }
   await loadSettings();
   try {
     await chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
@@ -964,9 +1158,6 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
 
 chrome.storage.onChanged.addListener((changes, namespace) => {
   if (namespace === 'sync') {
-    if (changes.geminiApiKey) {
-      geminiApiKey = changes.geminiApiKey.newValue;
-    }
     if (changes.interfaceLanguage) {
       currentLanguage = changes.interfaceLanguage.newValue || 'zh';
       updateContextMenu();
@@ -1054,6 +1245,35 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (CONTENT_SCRIPT_ACTIONS.has(action) && !isContentScriptSender(sender)) {
     sendResponse({ success: false, error: 'Unauthorized content-script action.' });
     return false;
+  }
+  if (CONVERSATION_ACTIONS.has(action) && !isConversationPageSender(sender)) {
+    sendResponse({ success: false, error: 'Unauthorized conversation-store action.' });
+    return false;
+  }
+
+  if (action === 'conversationStoreList') {
+    void withConversationStorageLock(() => readConversationStore(request.kind)).then(records => {
+      sendResponse({ success: true, records });
+    }).catch(error => sendResponse({ success: false, error: serializeError(error) }));
+    return true;
+  } else if (action === 'conversationStoreUpsert') {
+    void upsertConversation(request.kind, request.id, request.messages).then(record => {
+      notifyConversationStoreChanged(request.kind);
+      sendResponse({ success: true, record });
+    }).catch(error => sendResponse({ success: false, error: serializeError(error) }));
+    return true;
+  } else if (action === 'conversationStoreDelete') {
+    void deleteConversation(request.kind, request.id).then(() => {
+      notifyConversationStoreChanged(request.kind);
+      sendResponse({ success: true });
+    }).catch(error => sendResponse({ success: false, error: serializeError(error) }));
+    return true;
+  } else if (action === 'conversationStoreClear') {
+    void clearConversationStore(request.kind).then(() => {
+      notifyConversationStoreChanged(request.kind);
+      sendResponse({ success: true });
+    }).catch(error => sendResponse({ success: false, error: serializeError(error) }));
+    return true;
   }
 
   if (request.action === "getAndSummarizePage") {

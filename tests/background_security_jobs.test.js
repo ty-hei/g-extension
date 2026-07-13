@@ -86,6 +86,25 @@ test('high-privilege message actions enforce sidebar and content-script sender a
 
   const allowedContent = invokeMessage(listener, { action: 'shouldCaptureSelection' }, contentSender);
   assert.deepEqual(toPlain(allowedContent.responses), [{ capture: false }]);
+
+  const archiveSender = {
+    id: loaded.extensionId,
+    url: loaded.chrome.runtime.getURL('archive.html'),
+    tab: { id: 31, windowId: 7 }
+  };
+  const isConversationPageSender = loaded.getBinding('isConversationPageSender');
+  assert.equal(isConversationPageSender(archiveSender), true);
+  assert.equal(isConversationPageSender(contentSender), false);
+
+  const deniedStoreAction = invokeMessage(
+    listener,
+    { action: 'conversationStoreClear', kind: 'chat' },
+    contentSender
+  );
+  assert.deepEqual(
+    toPlain(deniedStoreAction.responses),
+    [{ success: false, error: 'Unauthorized conversation-store action.' }]
+  );
 });
 
 test('summarizeLinkTarget ignores caller requestId and generates the job identity in background', async function () {

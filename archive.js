@@ -118,7 +118,8 @@ document.addEventListener('DOMContentLoaded', async function () {
             chatRestored: "对话已恢复到历史记录。请打开侧边栏继续聊天。",
             errorConfigIncomplete: "API配置不完整，请在设置中检查。",
             thinking: "思考中...",
-            archiveCount: "{count} 个对话"
+            archiveCount: "{count} 个对话",
+            storageError: "本地对话存储失败"
         },
         en: {
             archiveTitle: "Archived Chats",
@@ -140,7 +141,8 @@ document.addEventListener('DOMContentLoaded', async function () {
             chatRestored: "Chat restored to history. Open sidebar to continue.",
             errorConfigIncomplete: "API configuration incomplete. Please check settings.",
             thinking: "Thinking...",
-            archiveCount: "{count} conversations"
+            archiveCount: "{count} conversations",
+            storageError: "Local conversation storage failed"
         }
     };
 
@@ -213,13 +215,28 @@ document.addEventListener('DOMContentLoaded', async function () {
         return firstMessage.archiveConversationId;
     }
 
+    async function conversationStoreRequest(action, payload = {}) {
+        const response = await chrome.runtime.sendMessage({ action, ...payload });
+        if (!response?.success) throw new Error(response?.error || 'Conversation storage request failed.');
+        return response;
+    }
+
+    function reportStorageError(error) {
+        console.error('Archive: conversation storage failed', error);
+        if (archiveCount) archiveCount.textContent = `${t('storageError')}: ${error.message}`;
+    }
+
     function persistArchivedChat(chat, identity = getChatIdentity(chat)) {
         if (!identity || !Array.isArray(chat)) return;
         const index = archivedChats.findIndex(candidate => getChatIdentity(candidate) === identity);
         if (index >= 0) archivedChats[index] = chat;
         activeChat = chat;
         activeChatIdentity = identity;
-        saveArchivedChats();
+        void conversationStoreRequest('conversationStoreUpsert', {
+            kind: 'archive',
+            id: identity,
+            messages: chat
+        }).catch(reportStorageError);
     }
 
     function renderArchivedChatsList() {
@@ -609,7 +626,10 @@ document.addEventListener('DOMContentLoaded', async function () {
                 const originalIndex = archivedChats.findIndex(originalChat => getChatIdentity(originalChat) === chatIdentity);
                 if (originalIndex !== -1) {
                     archivedChats.splice(originalIndex, 1);
-                    saveArchivedChats();
+                    void conversationStoreRequest('conversationStoreDelete', {
+                        kind: 'archive',
+                        id: chatIdentity
+                    }).catch(reportStorageError);
                     renderArchivedChatsList();
                     renderEmptyState();
                     activeChat = null;
@@ -683,13 +703,13 @@ document.addEventListener('DOMContentLoaded', async function () {
         });
     }
 
-    function loadArchivedChats() {
-        chrome.storage.local.get(['geminiArchivedChats'], (result) => {
-            if (result.geminiArchivedChats) {
-                archivedChats = result.geminiArchivedChats;
-            } else {
-                archivedChats = [];
-            }
+    async function loadArchivedChats() {
+        try {
+            const result = await conversationStoreRequest('conversationStoreList', { kind: 'archive' });
+            archivedChats = result.records.map(record => {
+                if (record.messages[0]) record.messages[0].archiveConversationId = record.id;
+                return record.messages;
+            });
             let identityAdded = false;
             archivedChats.forEach(chat => {
                 const firstMessage = Array.isArray(chat) ? chat[0] : null;
@@ -700,11 +720,23 @@ document.addEventListener('DOMContentLoaded', async function () {
             });
             if (identityAdded) saveArchivedChats();
             renderArchivedChatsList();
-        });
+        } catch (error) {
+            archivedChats = [];
+            renderArchivedChatsList();
+            reportStorageError(error);
+        }
     }
 
     function saveArchivedChats() {
-        chrome.storage.local.set({ 'geminiArchivedChats': archivedChats });
+        archivedChats.forEach(chat => {
+            const identity = getChatIdentity(chat);
+            if (!identity) return;
+            void conversationStoreRequest('conversationStoreUpsert', {
+                kind: 'archive',
+                id: identity,
+                messages: chat
+            }).catch(reportStorageError);
+        });
     }
 
     if (clearAllArchivedButton) {
@@ -713,40 +745,37 @@ document.addEventListener('DOMContentLoaded', async function () {
                 archivedChats = [];
                 activeChat = null;
                 activeChatIdentity = null;
-                saveArchivedChats();
+                void conversationStoreRequest('conversationStoreClear', { kind: 'archive' })
+                    .catch(reportStorageError);
                 renderArchivedChatsList();
                 renderEmptyState();
             }
         });
     }
 
-    chrome.storage.onChanged.addListener((changes, namespace) => {
-        if (namespace === 'local' && changes.geminiArchivedChats) {
+    chrome.runtime.onMessage.addListener((message, sender) => {
+        const isBackgroundSender = sender?.id === chrome.runtime.id && !sender.tab &&
+            (!sender.url || sender.url === chrome.runtime.getURL('background.js'));
+        if (message?.type === 'CONVERSATION_STORE_CHANGED' && message.kind === 'archive' && isBackgroundSender) {
             const selectedIdentity = activeChatIdentity;
-            archivedChats = changes.geminiArchivedChats.newValue || [];
-            let identityAdded = false;
-            archivedChats.forEach(chat => {
-                const firstMessage = Array.isArray(chat) ? chat[0] : null;
-                if (firstMessage && !firstMessage.archiveConversationId) {
-                    getChatIdentity(chat);
-                    identityAdded = true;
+            void loadArchivedChats().then(() => {
+                const reboundChat = selectedIdentity
+                    ? archivedChats.find(chat => getChatIdentity(chat) === selectedIdentity) || null
+                    : null;
+                if (reboundChat) {
+                    activeChat = reboundChat;
+                    activeChatIdentity = selectedIdentity;
+                    renderChatDetails(reboundChat, getChatTitle(reboundChat));
+                } else if (selectedIdentity || archivedChats.length === 0) {
+                    activeChat = null;
+                    activeChatIdentity = null;
+                    renderEmptyState();
                 }
             });
-            if (identityAdded) saveArchivedChats();
-            renderArchivedChatsList();
-            const reboundChat = selectedIdentity
-                ? archivedChats.find(chat => getChatIdentity(chat) === selectedIdentity) || null
-                : null;
-            if (reboundChat) {
-                activeChat = reboundChat;
-                activeChatIdentity = selectedIdentity;
-                renderChatDetails(reboundChat, getChatTitle(reboundChat));
-            } else if (selectedIdentity || archivedChats.length === 0) {
-                activeChat = null;
-                activeChatIdentity = null;
-                renderEmptyState();
-            }
         }
+    });
+
+    chrome.storage.onChanged.addListener((changes, namespace) => {
         if (namespace === 'sync' && changes.interfaceLanguage) {
             currentLanguage = changes.interfaceLanguage.newValue || 'zh';
             updateInterfaceLanguage();

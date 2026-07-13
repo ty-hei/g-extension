@@ -10,6 +10,7 @@ let currentLanguage = 'zh'; // Default language
 let currentChat = [];
 let allChats = [];
 let archivedChats = [];
+const pendingConversationWrites = new Map();
 let currentSelectedText = null;
 let currentSelectedSource = null;
 let pendingInputProvenance = null;
@@ -163,6 +164,7 @@ const translations = {
         requestQueueFull: '请求队列已满，请等待当前请求完成后重试。',
         responseTooLarge: 'API 响应超过安全大小上限，已停止接收。',
         streamIncomplete: 'API 流式响应未正常结束，未保存不完整回答。',
+        storageError: '本地对话存储失败',
         describeImage: "请描述这张图片。",
         viewArchivedBtnCount: "查看已存档对话",
         characters: "字符",
@@ -267,6 +269,7 @@ const translations = {
         requestQueueFull: 'The request queue is full. Wait for an active request to finish and try again.',
         responseTooLarge: 'The API response exceeded the safe size limit and was stopped.',
         streamIncomplete: 'The API stream ended unexpectedly, so the partial answer was not saved.',
+        storageError: 'Local conversation storage failed',
         describeImage: "Please describe this image.",
         viewArchivedBtnCount: "Archived Chats",
         characters: "characters",
@@ -633,7 +636,8 @@ async function initialize() {
             if (confirm(t('confirmClearHistory'))) {
                 allChats = [];
                 currentChat = [];
-                saveChatHistory();
+                void conversationStoreRequest('conversationStoreClear', { kind: 'chat' })
+                    .catch(error => showTemporaryStatus(`${t('storageError')}: ${error.message}`));
                 renderCurrentChat();
                 showTemporaryStatus(t('historyCleared'));
             }
@@ -748,13 +752,6 @@ async function initialize() {
             }
         }
         if (namespace === 'local') {
-            if (changes.geminiChatHistory) {
-                allChats = (changes.geminiChatHistory.newValue || []).map(chat => chat.filter(msg => !msg.isTempStatus && !msg.isThinking));
-            }
-            if (changes.geminiArchivedChats) {
-                archivedChats = changes.geminiArchivedChats.newValue || [];
-                updateArchivedChatsButtonCount();
-            }
             if (changes.promptTemplates) {
                 await loadPromptTemplates();
             }
@@ -1194,6 +1191,46 @@ function updateArchivedChatsButtonCount() {
     }
 }
 
+function getStoredConversationId(chat, kind) {
+    const firstMessage = Array.isArray(chat) ? chat[0] : null;
+    if (!firstMessage) return null;
+    const property = kind === 'archive' ? 'archiveConversationId' : 'conversationId';
+    if (typeof firstMessage[property] !== 'string' || !firstMessage[property]) {
+        const randomPart = globalThis.crypto?.randomUUID
+            ? globalThis.crypto.randomUUID()
+            : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+        firstMessage[property] = `${kind}-${randomPart}`;
+    }
+    return firstMessage[property];
+}
+
+async function conversationStoreRequest(action, payload = {}) {
+    const response = await chrome.runtime.sendMessage({ action, ...payload });
+    if (!response?.success) throw new Error(response?.error || 'Conversation storage request failed.');
+    return response;
+}
+
+function queueConversationWrite(kind, chat) {
+    if (!Array.isArray(chat) || chat.length === 0) return Promise.resolve();
+    const id = getStoredConversationId(chat, kind);
+    const messages = chat.map(message => ({
+        ...message,
+        parts: Array.isArray(message.parts) ? message.parts.map(part => ({ ...part })) : message.parts
+    }));
+    const key = `${kind}:${id}`;
+    const previous = pendingConversationWrites.get(key) || Promise.resolve();
+    const queued = previous.catch(() => {}).then(() => conversationStoreRequest('conversationStoreUpsert', {
+        kind,
+        id,
+        messages
+    }));
+    pendingConversationWrites.set(key, queued);
+    void queued.catch(error => showTemporaryStatus(`${t('storageError')}: ${error.message}`)).finally(() => {
+        if (pendingConversationWrites.get(key) === queued) pendingConversationWrites.delete(key);
+    });
+    return queued;
+}
+
 function handleSplitChat() {
     if (pendingApiTaskCount > 0) {
         showTemporaryStatus(t('requestBusy'));
@@ -1520,7 +1557,8 @@ function handleRuntimeMessages(request, sender, sendResponse) {
         'IMAGE_SELECTED_FOR_SIDEBAR',
         'LINK_EXTRACTION_JOB_UPDATED',
         'LINK_EXTRACTION_JOB_EPHEMERAL_FAILURE',
-        'TRIGGER_SIDEBAR_PAGE_SUMMARY'
+        'TRIGGER_SIDEBAR_PAGE_SUMMARY',
+        'CONVERSATION_STORE_CHANGED'
     ]);
     const messageType = request.type || request.action;
     const isBackgroundSender = sender?.id === chrome.runtime.id && !sender.tab &&
@@ -1566,6 +1604,11 @@ function handleRuntimeMessages(request, sender, sendResponse) {
             if (!isMessageForCurrentWindow(request)) break;
             handleSummarizeCurrentPage();
             sendResponse({ status: "Sidebar initiated page summary." });
+            break;
+
+        case 'CONVERSATION_STORE_CHANGED':
+            if (request.kind === 'archive') void loadArchivedChats();
+            else if (request.kind === 'chat') void loadChatHistory();
             break;
     }
     return false;
@@ -2523,7 +2566,7 @@ function saveChatHistory() {
     const cleanAllChats = allChats.map(chat =>
         chat.filter(msg => !msg.isTempStatus && !msg.isThinking)
     ).filter(chat => chat.length > 0);
-    chrome.storage.local.set({ 'geminiChatHistory': cleanAllChats });
+    cleanAllChats.forEach(chat => void queueConversationWrite('chat', chat));
 }
 
 function saveCurrentChat() {
@@ -2553,41 +2596,36 @@ function saveCurrentChat() {
 
 
 async function loadChatHistory() {
-    return new Promise(resolve => {
-        chrome.storage.local.get(['geminiChatHistory'], (result) => {
-            if (result.geminiChatHistory) {
-                allChats = result.geminiChatHistory.map(chat =>
-                    chat.filter(msg => msg.parts && msg.parts.length > 0 && typeof msg.parts[0].text === 'string' && !msg.isTempStatus && !msg.isThinking)
-                ).filter(chat => chat.length > 0);
-            } else {
-                allChats = [];
-            }
-
-            if (currentChat.length === 0) {
-                if (allChats.length > 0) {
-                    currentChat = [...allChats[0]];
-                } else {
-                    currentChat = [];
-                }
-            }
-            renderCurrentChat();
-            resolve();
-        });
-    });
+    try {
+        const result = await conversationStoreRequest('conversationStoreList', { kind: 'chat' });
+        allChats = result.records.map(record => {
+            const chat = record.messages.filter(msg =>
+                msg.parts && msg.parts.length > 0 && typeof msg.parts[0].text === 'string' && !msg.isTempStatus && !msg.isThinking
+            );
+            if (chat[0]) chat[0].conversationId = record.id;
+            return chat;
+        }).filter(chat => chat.length > 0);
+    } catch (error) {
+        console.error('Sidebar: failed to load chat history', error);
+        allChats = [];
+        showTemporaryStatus(`${t('storageError')}: ${error.message}`);
+    }
+    if (currentChat.length === 0) currentChat = allChats.length > 0 ? [...allChats[0]] : [];
+    renderCurrentChat();
 }
 
 async function loadArchivedChats() {
-    return new Promise(resolve => {
-        chrome.storage.local.get(['geminiArchivedChats'], (result) => {
-            if (result.geminiArchivedChats) {
-                archivedChats = result.geminiArchivedChats;
-            } else {
-                archivedChats = [];
-            }
-            updateArchivedChatsButtonCount();
-            resolve();
+    try {
+        const result = await conversationStoreRequest('conversationStoreList', { kind: 'archive' });
+        archivedChats = result.records.map(record => {
+            if (record.messages[0]) record.messages[0].archiveConversationId = record.id;
+            return record.messages;
         });
-    });
+    } catch (error) {
+        console.error('Sidebar: failed to load archives', error);
+        archivedChats = [];
+    }
+    updateArchivedChatsButtonCount();
 }
 
 function saveArchivedChats() {
@@ -2597,9 +2635,8 @@ function saveArchivedChats() {
             return rest;
         })
     );
-    chrome.storage.local.set({ 'geminiArchivedChats': cleanArchivedChats }, () => {
-        updateArchivedChatsButtonCount();
-    });
+    cleanArchivedChats.forEach(chat => void queueConversationWrite('archive', chat));
+    updateArchivedChatsButtonCount();
 }
 
 document.addEventListener('DOMContentLoaded', initialize);
