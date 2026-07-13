@@ -173,7 +173,7 @@
         truncated after 120,000 source characters, ordinary chat history included with a request is limited to the most
         recent 40,000 characters, and fetched images are limited to 10 MiB. Regex previews are limited to 1,000 matches
         and 100,000 output characters. Link-job session data uses a 7 MiB internal budget with result space reserved
-        before a tab opens. Streaming requests from the side panel and archive page stop after two minutes total or 30 seconds without stream data.</li>
+        before a tab opens. Streaming responses from the side panel and archive page are capped at 2 MiB/200,000 characters, stop after two minutes total or 30 seconds without stream data, and can be stopped by the user.</li>
       <li><strong>Providing Personalized Features:</strong> Prompt templates help you quickly perform common tasks.
         Archiving and history features allow you to review important information.</li>
     </ul>

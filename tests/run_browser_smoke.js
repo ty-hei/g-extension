@@ -251,10 +251,61 @@ function runBrowserProtocol(devTools, url) {
         returnByValue: true
       }, sessionId);
       const value = evaluation.result && evaluation.result.value;
-      if (value && value.complete) return value.results;
+      if (value && value.complete) {
+        const installedResults = await inspectInstalledExtension(devTools);
+        return [...value.results, ...installedResults];
+      }
       await delay(50);
     }
   })();
+}
+
+async function inspectInstalledExtension(devTools) {
+  let backgroundTarget = null;
+  for (let attempt = 0; attempt < 100 && !backgroundTarget; attempt += 1) {
+    const targets = await devTools.send('Target.getTargets');
+    backgroundTarget = targets.targetInfos?.find(target =>
+      target.type === 'service_worker' && /^chrome-extension:\/\/[^/]+\/background\.js$/.test(target.url)
+    );
+    if (!backgroundTarget) await delay(50);
+  }
+  if (!backgroundTarget) {
+    console.log('SKIP installed-extension smoke: this Chrome build did not load --load-extension (use Chromium or Chrome for Testing).');
+    return [];
+  }
+
+  const extensionOrigin = backgroundTarget.url.match(/^chrome-extension:\/\/[^/]+/)?.[0];
+  const guideTarget = await devTools.send('Target.createTarget', { url: `${extensionOrigin}/guide/index.html` });
+  const attachment = await devTools.send('Target.attachToTarget', { targetId: guideTarget.targetId, flatten: true });
+  await devTools.send('Runtime.enable', {}, attachment.sessionId);
+  let guideState = null;
+  for (let attempt = 0; attempt < 100 && !guideState?.ready; attempt += 1) {
+    const evaluation = await devTools.send('Runtime.evaluate', {
+      expression: `(() => {
+        const button = document.getElementById('langBtn');
+        if (!button || document.readyState === 'loading') return { ready: false };
+        button.click();
+        return {
+          ready: true,
+          lang: document.documentElement.lang,
+          externalScriptLoaded: typeof IntersectionObserver === 'function' && button.textContent === '中',
+          inlineHandlerAbsent: button.getAttribute('onclick') === null
+        };
+      })()`,
+      returnByValue: true
+    }, attachment.sessionId);
+    guideState = evaluation.result?.value;
+    if (!guideState?.ready) await delay(50);
+  }
+
+  return [
+    { name: 'unpacked extension starts its service worker', passed: true },
+    {
+      name: 'installed guide runs under extension CSP',
+      passed: guideState?.lang === 'en' && guideState.externalScriptLoaded && guideState.inlineHandlerAbsent,
+      details: guideState ? JSON.stringify(guideState) : 'Guide did not become ready.'
+    }
+  ];
 }
 
 async function runBrowser(browser, url, profileDirectory) {
@@ -264,6 +315,8 @@ async function runBrowser(browser, url, profileDirectory) {
     '--disable-component-update',
     '--disable-dev-shm-usage',
     '--disable-gpu',
+    `--disable-extensions-except=${REPOSITORY_ROOT}`,
+    `--load-extension=${REPOSITORY_ROOT}`,
     '--no-first-run',
     `--user-data-dir=${profileDirectory}`,
     '--remote-debugging-pipe',

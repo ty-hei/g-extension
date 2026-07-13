@@ -9,6 +9,8 @@ document.addEventListener('DOMContentLoaded', async function () {
     let activeChat = null; // Track active chat for sending messages
     let activeChatIdentity = null;
     let isArchiveRequestInFlight = false;
+    let activeArchiveRequestController = null;
+    let archiveRequestCancelled = false;
     let streamingArchiveMessageElement = null; // Track the DOM element being streamed to
     let isArchiveUserScrolling = false; // Track if user has manually scrolled
     let archiveScrollCheckTimeout = null; // Debounce scroll detection
@@ -61,6 +63,7 @@ document.addEventListener('DOMContentLoaded', async function () {
     const archiveInputContainer = document.getElementById('archive-input-container');
     const archiveChatInput = document.getElementById('archive-chat-input');
     const archiveSendBtn = document.getElementById('archive-send-btn');
+    const archiveStopBtn = document.getElementById('archive-stop-btn');
     const archiveCount = document.getElementById('archive-count');
 
     // Detect when user manually scrolls in archive
@@ -83,6 +86,10 @@ document.addEventListener('DOMContentLoaded', async function () {
     if (archiveSendBtn) {
         archiveSendBtn.addEventListener('click', handleSendMessage);
     }
+    archiveStopBtn?.addEventListener('click', () => {
+        archiveRequestCancelled = true;
+        activeArchiveRequestController?.abort();
+    });
     if (archiveChatInput) {
         archiveChatInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
@@ -121,7 +128,8 @@ document.addEventListener('DOMContentLoaded', async function () {
             archiveCount: "{count} 个对话",
             openArchive: "打开存档对话",
             copyMessage: "复制消息",
-            storageError: "本地对话存储失败"
+            storageError: "本地对话存储失败",
+            requestCancelled: "已取消本次 API 请求。"
         },
         en: {
             archiveTitle: "Archived Chats",
@@ -146,7 +154,8 @@ document.addEventListener('DOMContentLoaded', async function () {
             archiveCount: "{count} conversations",
             openArchive: "Open archived conversation",
             copyMessage: "Copy message",
-            storageError: "Local conversation storage failed"
+            storageError: "Local conversation storage failed",
+            requestCancelled: "The API request was cancelled."
         }
     };
 
@@ -165,6 +174,7 @@ document.addEventListener('DOMContentLoaded', async function () {
         });
         document.title = t('archiveTitle');
         archiveSendBtn?.setAttribute('aria-label', currentLanguage === 'zh' ? '发送消息' : 'Send message');
+        archiveStopBtn?.setAttribute('aria-label', currentLanguage === 'zh' ? '停止请求' : 'Stop request');
         updateArchiveCount();
     }
 
@@ -365,6 +375,23 @@ document.addEventListener('DOMContentLoaded', async function () {
         let buffer = '';
         let streamComplete = false;
         let responseBytes = 0;
+        let pendingDataLines = [];
+        const flushDataEvent = force => {
+            if (pendingDataLines.length === 0) return;
+            const dataText = pendingDataLines.join('\n');
+            let payload;
+            try {
+                payload = JSON.parse(dataText);
+            } catch (error) {
+                if (force) {
+                    console.warn('Archive: invalid SSE payload', error);
+                    pendingDataLines = [];
+                }
+                return;
+            }
+            pendingDataLines = [];
+            onPayload(payload);
+        };
         while (!streamComplete) {
             const { done, value } = await readArchiveStreamChunk(reader, controller);
             responseBytes += value?.byteLength || 0;
@@ -376,23 +403,23 @@ document.addEventListener('DOMContentLoaded', async function () {
             buffer = done ? '' : lines.pop();
             for (const rawLine of lines) {
                 const line = rawLine.endsWith('\r') ? rawLine.slice(0, -1) : rawLine;
+                if (line === '') {
+                    flushDataEvent(true);
+                    continue;
+                }
                 if (!line.startsWith('data:')) continue;
                 const dataText = line.slice(5).trimStart();
                 if (dataText === '[DONE]') {
+                    flushDataEvent(true);
                     streamComplete = true;
                     break;
                 }
-                let payload;
-                try {
-                    payload = JSON.parse(dataText);
-                } catch (error) {
-                    console.warn('Archive: invalid SSE payload', error);
-                    continue;
-                }
-                onPayload(payload);
+                pendingDataLines.push(dataText);
+                flushDataEvent(false);
             }
             if (done) break;
         }
+        flushDataEvent(true);
         return { doneMarkerSeen: streamComplete };
     }
 
@@ -443,6 +470,9 @@ document.addEventListener('DOMContentLoaded', async function () {
         }
 
         const controller = new AbortController();
+        activeArchiveRequestController = controller;
+        archiveRequestCancelled = false;
+        if (archiveStopBtn) archiveStopBtn.style.display = 'inline-flex';
         let requestTimedOut = false;
         let reader = null;
         let aiMsg = null;
@@ -508,7 +538,9 @@ document.addEventListener('DOMContentLoaded', async function () {
             console.error("API Error:", error);
             removeChatMessage(chat, thinkingMsg);
             if (aiMsg) removeChatMessage(chat, aiMsg);
-            const message = requestTimedOut || error?.name === 'AbortError' || error?.name === 'TimeoutError'
+            const message = archiveRequestCancelled
+                ? `Error: ${t('requestCancelled')}`
+                : requestTimedOut || error?.name === 'AbortError' || error?.name === 'TimeoutError'
                 ? 'Error: API request timed out.'
                 : `Error: ${error.message}`;
             chat.push({
@@ -522,6 +554,10 @@ document.addEventListener('DOMContentLoaded', async function () {
             return false;
         } finally {
             clearTimeout(totalTimeout);
+            if (activeArchiveRequestController === controller) {
+                activeArchiveRequestController = null;
+                if (archiveStopBtn) archiveStopBtn.style.display = 'none';
+            }
             if (reader) {
                 try {
                     await reader.cancel();

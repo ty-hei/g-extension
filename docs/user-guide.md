@@ -55,6 +55,8 @@ API 配置（包括 API 密钥）保存在 `chrome.storage.sync`，可能通过�
 
 先打开对应浏览器窗口的侧边栏，再在网页中选择文字；选区会出现在引用区。侧边栏关闭时，扩展不会捕获选区。可以复制、清除引用，也可以输入问题后发送。普通聊天请求最多携带最近 40,000 个字符的历史上下文。
 
+流式请求进行时，输入区会显示“停止”按钮；点击后会中止当前网络请求、丢弃未完成回答并显示独立的取消提示。存档页继续对话时也提供相同能力。服务端发送的标准 SSE 多行 `data:` 事件会先合并为一个事件再解析。
+
 ## 正则多行提取
 
 ### 开启与使用
@@ -147,7 +149,7 @@ API 配置（包括 API 密钥）保存在 `chrome.storage.sync`，可能通过�
 - “查看已存档对话”会打开存档页，可查看、继续对话、删除单个存档或清空全部存档。
 - 侧边栏输入区旁的垃圾桶用于清除普通聊天历史；它与存档页的“清空所有存档”是不同操作。
 
-普通聊天历史、Prompt 和存档保存在 `chrome.storage.local`。当前存档页不提供全文搜索。
+普通聊天历史、Prompt 和存档保存在 `chrome.storage.local`。聊天与存档由后台按独立会话记录串行写入，避免多个窗口互相覆盖；普通聊天最多 50 个、存档最多 200 个，单会话上限 512 KiB、每类总预算 7 MiB。旧版本的整数组存储会在首次读取时自动迁移。当前存档页不提供全文搜索。
 
 ## 数据何时离开浏览器
 
@@ -224,6 +226,8 @@ Each extracted text field is limited to 200,000 characters. AI-bound source text
 ### Work with selected text
 
 Open the side panel for the relevant browser window before selecting text on the page. The selection then appears in the quote area. The extension does not capture selections while that window has no connected side panel. You can copy or clear the quote, or submit it with a question. A normal chat request carries at most the most recent 40,000 characters of chat history.
+
+While a streaming request is active, the input area shows **Stop**. It aborts the current network request, discards any incomplete answer, and reports cancellation separately from timeout. Continued conversations on the archive page provide the same control. Standard SSE events with multiple `data:` fields are joined before JSON parsing.
 
 ## Multiline regex extraction
 
@@ -317,7 +321,7 @@ Choose **More Actions** → **Manage Prompts** to add and edit templates, and to
 - **Archived Chats** opens the archive page, where you can read or continue a conversation, delete one archive, or clear all archives.
 - The trash button beside the side-panel input clears ordinary chat history. It is separate from **Clear All Archives** on the archive page.
 
-Ordinary chat history, prompts, and archives are stored in `chrome.storage.local`. The current archive page does not provide full-text search.
+Ordinary chat history, prompts, and archives are stored in `chrome.storage.local`. The background serializes independent conversation-record writes so multiple windows cannot overwrite one another. Ordinary history is capped at 50 records, archives at 200, each conversation at 512 KiB, and each store at 7 MiB. Legacy whole-array data migrates on first read. The current archive page does not provide full-text search.
 
 ## When data leaves the browser
 

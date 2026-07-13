@@ -103,6 +103,24 @@ test('sidebar SSE accepts no-space data fields, CRLF, split UTF-8 bytes, and sto
   assert.equal(updates.some(text => text.includes('不应读取')), false);
 });
 
+test('sidebar SSE joins multiline data fields before decoding one JSON event', async function () {
+  const messages = [];
+  const updates = [];
+  const reader = makeByteReader([
+    'data:{"choices":\n',
+    'data:[{"delta":{"content":"multiline"}}]}\n',
+    '\n',
+    'data:[DONE]\n'
+  ].join(''));
+  const loaded = createSidebarVm({
+    fetch: async () => ({ ok: true, status: 200, body: { getReader: () => reader } })
+  });
+  installApiStubs(loaded, messages, updates);
+
+  assert.equal(await loaded.get('performApiCall')('hello', false, null, false, []), true);
+  assert.equal(updates.at(-1), 'multiline');
+});
+
 test('untrusted webpage requests exclude prior chat history and add a safety instruction', async function () {
   const requests = [];
   const messages = [];
@@ -297,6 +315,28 @@ test('total API timeout aborts a pending request and reports the timeout-specifi
   assert.equal(await pending, false);
   assert.equal(messages.at(-1).parts[0].text, 'apiTimeout');
   assert.ok(cleared.includes(totalTimer));
+});
+
+test('user cancellation aborts the active sidebar request with a distinct status', async function () {
+  const messages = [];
+  const loaded = createSidebarVm({
+    fetch(_url, init) {
+      return new Promise((resolve, reject) => {
+        init.signal.addEventListener('abort', () => {
+          const error = new Error('aborted');
+          error.name = 'AbortError';
+          reject(error);
+        });
+      });
+    }
+  });
+  installApiStubs(loaded, messages);
+
+  const pending = loaded.get('performApiCall')('cancel me', false, null, false, []);
+  loaded.assign('activeApiRequest.cancel();');
+
+  assert.equal(await pending, false);
+  assert.equal(messages.at(-1).parts[0].text, 'requestCancelled');
 });
 
 test('an incomplete stream is rolled back and reported instead of being saved as a successful answer', async function () {

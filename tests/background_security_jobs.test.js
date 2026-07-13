@@ -124,16 +124,41 @@ test('summarizeLinkTarget ignores caller requestId and generates the job identit
     linkText: 'Target article'
   }, sender);
 
-  assert.equal(invocation.returnValue, false);
+  assert.equal(invocation.returnValue, true);
+  assert.equal(invocation.responses.length, 0);
+
+  await loaded.flush();
   assert.equal(invocation.responses.length, 1);
   assert.equal(invocation.responses[0].accepted, true);
   assert.match(invocation.responses[0].requestId, /^link-/);
   assert.notEqual(invocation.responses[0].requestId, 'caller-controlled-id');
 
-  await loaded.flush();
   const generatedId = invocation.responses[0].requestId;
   assert.equal(loaded.sessionData[`gExtensionLinkJob:${generatedId}`].requestId, generatedId);
   assert.equal(loaded.sessionData['gExtensionLinkJob:caller-controlled-id'], undefined);
+});
+
+test('summarizeLinkTarget reports admission failure instead of acknowledging an unpersisted job', async function () {
+  const loaded = await loadBackground({ storageBytesInUse: 8 * 1024 * 1024 });
+  const listener = loaded.events.runtimeOnMessage.listeners[0];
+  const sender = {
+    id: loaded.extensionId,
+    frameId: 0,
+    url: 'https://source.example/page',
+    tab: { id: 20, windowId: 7, url: 'https://source.example/page' }
+  };
+
+  const invocation = invokeMessage(listener, {
+    action: 'summarizeLinkTarget',
+    url: 'https://target.example/article'
+  }, sender);
+  assert.equal(invocation.returnValue, true);
+  await loaded.flush();
+
+  assert.equal(invocation.responses.length, 1);
+  assert.equal(invocation.responses[0].accepted, false);
+  assert.match(invocation.responses[0].error, /storage is temporarily full/i);
+  assert.equal(loaded.operations.some(operation => operation.type === 'tabs.create'), false);
 });
 
 test('link extraction rejects loopback, private, link-local, and credential-bearing targets', async function () {
@@ -148,7 +173,11 @@ test('link extraction rejects loopback, private, link-local, and credential-bear
     'http://172.16.0.1/',
     'http://192.168.1.1/',
     'http://169.254.169.254/latest/meta-data/',
-    'http://[::1]/'
+    'http://[::1]/',
+    'http://[::ffff:192.168.1.1]/',
+    'http://router/admin',
+    'http://service.internal/',
+    'http://printer.local/'
   ]) {
     assert.throws(() => validatePageUrl(url, options), /not supported/);
   }
@@ -248,14 +277,14 @@ test('a full link-job storage budget rejects admission without persisting a reje
   const startLinkExtractionJob = loaded.getBinding('startLinkExtractionJob');
   loaded.operations.length = 0;
 
-  const requestId = await startLinkExtractionJob({
-    requestId: 'budget-rejected-job',
-    url: 'https://target.example/storage-full',
-    title: 'Storage full',
-    windowId: 7
-  });
-
-  assert.equal(requestId, 'budget-rejected-job');
+  await assert.rejects(startLinkExtractionJob({
+      requestId: 'budget-rejected-job',
+      url: 'https://target.example/storage-full',
+      title: 'Storage full',
+      windowId: 7
+    }),
+    error => error?.code === 'LINK_STORAGE_BUDGET_EXCEEDED'
+  );
   assert.equal(loaded.sessionData['gExtensionLinkJob:budget-rejected-job'], undefined);
   assert.equal(loaded.sessionData.gExtensionLinkJobIndex['budget-rejected-job'], undefined);
   assert.equal(loaded.operations.some(operation => operation.type === 'tabs.create'), false);
@@ -264,13 +293,8 @@ test('a full link-job storage budget rejects admission without persisting a reje
     operation.values?.['gExtensionLinkJob:budget-rejected-job']
   ), false);
 
-  const messages = loaded.operations
-    .filter(operation => operation.type === 'runtime.sendMessage')
-    .map(operation => operation.message);
-  assert.deepEqual(messages.map(message => message.type), ['LINK_EXTRACTION_JOB_EPHEMERAL_FAILURE']);
-  assert.equal(messages[0].requestId, 'budget-rejected-job');
-  assert.equal(messages[0].windowId, 7);
-  assert.match(messages[0].error, /storage is temporarily full/i);
+  const messages = loaded.operations.filter(operation => operation.type === 'runtime.sendMessage');
+  assert.equal(messages.length, 0);
   assert.ok(loaded.operations.some(operation =>
     operation.type === 'alarms.clear' &&
     operation.name === 'gExtensionLinkJobTimeout:budget-rejected-job'

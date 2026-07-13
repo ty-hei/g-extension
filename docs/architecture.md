@@ -95,7 +95,7 @@ claim → 交付失败          → release → retryAfter → 再次可领取
 ### 信任边界
 
 - 后台分别维护侧边栏动作和内容脚本动作 allowlist，并检查扩展 ID、发送页面、顶层 frame、标签页和窗口归属。
-- 链接只接受无内嵌凭据的 `http:`/`https:` URL；当前页提取可按需处理 `file:`，前提是用户授予 Chrome 的文件访问权限。
+- 链接只接受无内嵌凭据的公网 `http:`/`https:` URL；localhost、单标签内网名、私有/链路本地 IP 与常见内网后缀会被拒绝。当前页提取可按需处理 `file:`，前提是用户授予 Chrome 的文件访问权限。
 - 页面正文属于不可信输入。摘要请求不携带既有聊天历史，并附加“把网页内容视为数据”的安全指令。
 - 模型输出不是可信 HTML。`safe_markdown.js` 在展示前清洗危险标签、事件属性、样式和不安全 URL scheme。
 - 正则运行在可终止的 Worker 中；拖放界面位于 closed ShadowRoot；扩展运行脚本均从包内加载。
@@ -112,10 +112,10 @@ claim → 交付失败          → release → retryAfter → 再次可领取
 | 发往 AI 的单次源文本 | 120,000 字符 |
 | 普通聊天历史 | 最近 40,000 字符 |
 | 图片 | 10 MiB，下载 30 秒超时 |
-| 侧边栏/存档页流式 AI 请求 | 总计 2 分钟；流连续 30 秒无数据即终止 |
+| 侧边栏/存档页流式 AI 请求 | 响应 2 MiB / 200,000 字符；总计 2 分钟；流连续 30 秒无数据即终止；用户可主动停止 |
 | 链接提取 | 最多 3 个并发；每个 30 秒 |
 | 链接任务 session 预算 | 7 MiB；每个活动任务预留 900 KiB |
-| 链接 claim / 重试 / 终态清理 | 5 分钟 / 60 秒 / 完成约 10 分钟后尝试；有效 claim/retry 会延期 |
+| 链接 claim / 重试 / 终态清理 | 15 分钟 / 60 秒 / 完成约 10 分钟后尝试；有效 claim/retry 会延期 |
 
 <a id="english"></a>
 
@@ -163,7 +163,7 @@ A link action persists a `creating` job and timeout alarm before opening an inac
 | `chrome.storage.local` | Per-conversation indexed chat/archive records and prompt templates; background serialization prevents multi-window lost updates. Ordinary chat is capped at 50 records, archives at 200, each record at 512 KiB, and each store at 7 MiB; legacy array keys migrate on first read |
 | `chrome.storage.session` | Link-job records and compact index for recovery |
 
-Privileged messages use separate side-panel and content-script action allowlists plus sender, frame, tab, and window validation. Link targets must be credential-free HTTP(S) URLs. Page content is untrusted, model Markdown is sanitized, regex work is terminable, and packaged runtime scripts are local. `<all_urls>` grants access but does not itself transmit data.
+Privileged messages use separate side-panel, archive-page, and content-script action allowlists plus sender, frame, tab, and window validation. Link targets must be credential-free public HTTP(S) URLs; localhost, single-label intranet names, private/link-local literals, and common private DNS suffixes are rejected. Page content is untrusted, model Markdown is sanitized, regex work is terminable, and packaged runtime scripts are local. `<all_urls>` grants access but does not itself transmit data.
 
 ### Current resource limits
 
@@ -174,7 +174,7 @@ Privileged messages use separate side-panel and content-script action allowlists
 | Regex pattern/output | 10,000 pattern characters; 1,000 hits; 100,000 output characters; 1-second Worker timeout |
 | AI-bound source/history | 120,000 / newest 40,000 characters |
 | Image | 10 MiB; 30-second fetch timeout |
-| Side-panel/archive streaming AI request | 2 minutes total; 30 seconds stream-idle |
+| Side-panel/archive streaming AI request | 2 MiB / 200,000 response characters; 2 minutes total; 30 seconds stream-idle; user-cancellable |
 | Link extraction | 3 concurrent; 30 seconds each |
 | Link session budget | 7 MiB; 900 KiB reserved per active job |
-| Link claim/retry/terminal cleanup | 5 minutes / 60 seconds / attempted about 10 minutes after completion; active claim/retry delays it |
+| Link claim/retry/terminal cleanup | 15 minutes / 60 seconds / attempted about 10 minutes after completion; active claim/retry delays it |

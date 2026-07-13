@@ -17,6 +17,7 @@ let pendingInputProvenance = null;
 let currentSelectedImageUrl = null;
 let promptTemplates = [];
 let streamingMessageElement = null; // Track the DOM element being streamed to
+let activeApiRequest = null;
 let isUserScrolling = false; // Track if user has manually scrolled
 let scrollCheckTimeout = null; // Debounce scroll detection
 let setupOnboardingVisible = false;
@@ -165,6 +166,8 @@ const translations = {
         responseTooLarge: 'API 响应超过安全大小上限，已停止接收。',
         streamIncomplete: 'API 流式响应未正常结束，未保存不完整回答。',
         storageError: '本地对话存储失败',
+        stopRequest: '停止',
+        requestCancelled: '已取消本次 API 请求。',
         copyMessage: '复制消息',
         archiveMessage: '存档问答',
         archivedLabel: '已存档',
@@ -273,6 +276,8 @@ const translations = {
         responseTooLarge: 'The API response exceeded the safe size limit and was stopped.',
         streamIncomplete: 'The API stream ended unexpectedly, so the partial answer was not saved.',
         storageError: 'Local conversation storage failed',
+        stopRequest: 'Stop',
+        requestCancelled: 'The API request was cancelled.',
         copyMessage: 'Copy message',
         archiveMessage: 'Archive Q&A',
         archivedLabel: 'Archived',
@@ -465,7 +470,7 @@ function revealCurrentConfigSetupCard() {
 }
 
 // --- DOM 元素获取 ---
-let chatOutput, chatInput, sendMessageButton, summarizePageButton, extractContentButton,
+let chatOutput, chatInput, sendMessageButton, stopRequestButton, summarizePageButton, extractContentButton,
     selectedTextPreview, selectedTextContent, clearSelectedTextButton, copySelectedTextButton,
     selectedImagePreviewContainer, clearSelectedImageButton,
     clearAllHistoryButton,
@@ -497,6 +502,7 @@ async function initialize() {
 
     chatInput = document.getElementById('chatInput');
     sendMessageButton = document.getElementById('sendMessageButton');
+    stopRequestButton = document.getElementById('stopRequestButton');
     sendShortcutHint = document.getElementById('sendShortcutHint');
     summarizePageButton = document.getElementById('summarizePageButton');
     extractContentButton = document.getElementById('extractContentButton');
@@ -615,6 +621,7 @@ async function initialize() {
     }
 
     if (sendMessageButton) sendMessageButton.addEventListener('click', handleSendMessage);
+    if (stopRequestButton) stopRequestButton.addEventListener('click', () => activeApiRequest?.cancel());
 
     if (chatInput) {
         chatInput.addEventListener('keydown', (event) => {
@@ -2150,6 +2157,7 @@ async function performApiCall(
     // ----- API Call and Streaming Response Handling -----
     const requestController = new AbortController();
     let requestTimedOut = false;
+    let requestCancelled = false;
     let reader = null;
     let aiMessage = null;
     let aiResponseText = '';
@@ -2157,6 +2165,14 @@ async function performApiCall(
         requestTimedOut = true;
         requestController.abort();
     }, API_REQUEST_TIMEOUT_MS);
+    activeApiRequest = {
+        controller: requestController,
+        cancel() {
+            requestCancelled = true;
+            requestController.abort();
+        }
+    };
+    if (stopRequestButton) stopRequestButton.style.display = 'inline-flex';
     try {
         const response = await fetch(endpoint, {
             method: 'POST',
@@ -2214,6 +2230,48 @@ async function performApiCall(
         let streamComplete = false;
         let providerFinished = false;
         let responseBytes = 0;
+        let pendingDataLines = [];
+        const processSseData = (jsonStr, force = false) => {
+            let data;
+            try {
+                data = JSON.parse(jsonStr);
+            } catch (error) {
+                if (force) console.warn('Error parsing stream event:', error);
+                return false;
+            }
+            let chunkText = '';
+            if (apiType === 'gemini') {
+                if (data.candidates?.some(candidate => candidate.finishReason)) providerFinished = true;
+                if (data.candidates?.[0]?.content?.parts) {
+                    chunkText = data.candidates[0].content.parts.map(part => part.text).join('');
+                }
+            } else if (apiType === 'openai') {
+                if (data.choices?.some(choice => choice.finish_reason)) providerFinished = true;
+                if (data.choices?.[0]?.delta?.content) chunkText = data.choices[0].delta.content;
+            }
+            if (chunkText) {
+                if (aiResponseText.length + chunkText.length > MAX_API_RESPONSE_CHARS) throw createResponseLimitError();
+                if (!aiMessage) {
+                    aiMessage = addMessageToChat({
+                        role: 'model',
+                        parts: [{ text: '' }],
+                        timestamp: Date.now(),
+                        isStreaming: true,
+                        excludeFromApiHistory: true
+                    });
+                    streamingMessageElement = chatOutput.lastElementChild;
+                }
+                aiResponseText += chunkText;
+                aiMessage.parts[0].text = aiResponseText;
+                updateStreamingMessage(aiResponseText);
+            }
+            return true;
+        };
+        const flushSseData = force => {
+            if (pendingDataLines.length === 0) return;
+            const joined = pendingDataLines.join('\n');
+            if (processSseData(joined, force) || force) pendingDataLines = [];
+        };
 
         while (!streamComplete) {
             const { value, done } = await readStreamChunkWithIdleTimeout(reader, requestController);
@@ -2230,58 +2288,25 @@ async function performApiCall(
 
             for (const rawLine of lines) {
                 const line = rawLine.endsWith('\r') ? rawLine.slice(0, -1) : rawLine;
-                if (line.trim() === '' || !line.startsWith('data:')) continue;
+                if (line === '') {
+                    flushSseData(true);
+                    continue;
+                }
+                if (!line.startsWith('data:')) continue;
 
                 const jsonStr = line.slice(5).trimStart();
                 if (jsonStr === '[DONE]') {
+                    flushSseData(true);
                     streamComplete = true;
                     providerFinished = true;
                     break;
                 }
-
-                try {
-                    const data = JSON.parse(jsonStr);
-                    let chunkText = '';
-
-                    if (apiType === 'gemini') {
-                        if (data.candidates?.some(candidate => candidate.finishReason)) providerFinished = true;
-                        if (data.candidates && data.candidates[0]?.content?.parts) {
-                            chunkText = data.candidates[0].content.parts.map(part => part.text).join("");
-                        }
-                    } else if (apiType === 'openai') {
-                        if (data.choices?.some(choice => choice.finish_reason)) providerFinished = true;
-                        if (data.choices && data.choices[0]?.delta?.content) {
-                            chunkText = data.choices[0].delta.content;
-                        }
-                    }
-
-                    if (chunkText) {
-                        if (aiResponseText.length + chunkText.length > MAX_API_RESPONSE_CHARS) {
-                            throw createResponseLimitError();
-                        }
-                        if (!aiMessage) {
-                            aiMessage = addMessageToChat({
-                                role: 'model',
-                                parts: [{ text: '' }],
-                                timestamp: Date.now(),
-                                isStreaming: true,
-                                excludeFromApiHistory: true
-                            });
-                            // Store reference to the DOM element for this streaming message
-                            streamingMessageElement = chatOutput.lastElementChild;
-                        }
-                        aiResponseText += chunkText;
-                        aiMessage.parts[0].text = aiResponseText;
-                        // Update only the streaming message instead of re-rendering all
-                        updateStreamingMessage(aiResponseText);
-                    }
-                } catch (error) {
-                    if (error?.code === 'API_RESPONSE_TOO_LARGE') throw error;
-                    console.warn('Error parsing stream chunk:', error, 'Chunk:', jsonStr);
-                }
+                pendingDataLines.push(jsonStr);
+                flushSseData(false);
             }
             if (done) break;
         }
+        flushSseData(true);
 
         if (!providerFinished) throw createIncompleteStreamError();
         if (aiMessage) {
@@ -2310,7 +2335,9 @@ async function performApiCall(
         removeMessageByContentCheck(msg => msg.isThinking && msg.timestamp === thinkingMessage.timestamp);
         if (aiMessage) removeMessageByContentCheck(msg => msg === aiMessage);
         let friendlyError = t('apiCommErr');
-        if (requestTimedOut || error?.code === 'API_TIMEOUT' || error?.name === 'AbortError') {
+        if (requestCancelled) {
+            friendlyError = t('requestCancelled');
+        } else if (requestTimedOut || error?.code === 'API_TIMEOUT' || error?.name === 'AbortError') {
             friendlyError = t('apiTimeout');
         } else if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
             friendlyError = t('networkErr');
@@ -2328,6 +2355,10 @@ async function performApiCall(
         return false;
     } finally {
         clearTimeout(requestTimeout);
+        if (activeApiRequest?.controller === requestController) {
+            activeApiRequest = null;
+            if (stopRequestButton) stopRequestButton.style.display = 'none';
+        }
         if (reader) {
             try {
                 await reader.cancel();

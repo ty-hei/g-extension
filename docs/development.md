@@ -124,9 +124,11 @@ runner 启动一个仅监听 `127.0.0.1` 的临时静态服务器，通过 DevTo
 
 1. `manifest.json` 版本、README 更新日志和商店说明一致。
 2. `npm test` 与 `npm run test:browser` 通过。
+   官方品牌 Chrome 可能忽略 `--load-extension`；runner 会明确跳过安装态子检查。发布前仍需用 Chromium/Chrome for Testing 或手动加载验证安装态。
 3. 新增权限、外部数据流、存储键、上限或保留期已同步更新 README、架构文档和中英文隐私政策。
 4. 新增用户界面文字已同步中英文；新增资源已包含在扩展包中。
 5. 从干净 Chrome profile 加载根目录，手动验证首次配置、当前页总结、本地全文、链接任务和错误提示。
+6. 运行 `npm run package`；商店 ZIP 由 `scripts/package_extension.js` 的显式 allowlist 与固定 ZIP 元数据生成。重复运行应产生相同 SHA-256，且不得手工把测试、`.DS_Store` 或废弃入口塞入 ZIP。
 
 <a id="english"></a>
 
@@ -174,4 +176,4 @@ The browser runner checks `CHROME_BIN`, `CHROME_PATH`, and `CHROMIUM_BIN` before
 
 The test workflow runs on pushes and pull requests with read-only repository permissions. Node 18 and 22 both run `npm test`; Node 22 also runs `npm run test:browser`. Coverage, lint, typecheck, and build are not current CI gates.
 
-Before release, verify the manifest/version/changelog, run Node and browser tests, manually load the repository root in a clean Chrome profile, and keep both language versions of user-facing text and privacy documentation synchronized. Any permission, storage, retention, limit, or outbound-data-flow change requires documentation and privacy-policy updates in the same change.
+Before release, verify the manifest/version/changelog, run Node and browser tests, manually load the repository root in a clean Chrome profile, and keep both language versions of user-facing text and privacy documentation synchronized. Branded Chrome may ignore `--load-extension`, in which case the runner explicitly skips its installed-extension subcheck; use Chromium/Chrome for Testing or a manual load for that verification. Run `npm run package` to generate the deterministic allowlisted store ZIP. Any permission, storage, retention, limit, or outbound-data-flow change requires documentation and privacy-policy updates in the same change.

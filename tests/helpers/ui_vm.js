@@ -173,6 +173,10 @@ async function createArchiveVm(options = {}) {
         },
         setCallApi: value => { callApi = value; },
         setRenderChatDetails: value => { renderChatDetails = value; },
+        cancelActiveRequest: () => {
+            archiveRequestCancelled = true;
+            activeArchiveRequestController?.abort();
+        },
         triggerStoreChange: chats => globalThis.__triggerArchiveStoreChange(chats)
     };
     loadArchivedChats();

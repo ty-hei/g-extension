@@ -304,8 +304,11 @@ function isContentScriptSender(sender) {
 function isPrivateNetworkHostname(hostname) {
   const value = String(hostname || '').toLowerCase().replace(/^\[|\]$/g, '');
   if (!value) return true;
-  if (value === 'localhost' || value.endsWith('.localhost') || value.endsWith('.local')) return true;
-  if (value === '::1' || value === '0:0:0:0:0:0:0:1' || value.startsWith('fc') || value.startsWith('fd') || value.startsWith('fe8') || value.startsWith('fe9') || value.startsWith('fea') || value.startsWith('feb')) return true;
+  if (!value.includes('.') && !value.includes(':')) return true;
+  if (value === 'localhost' || value.endsWith('.localhost') || value.endsWith('.local') || value.endsWith('.internal') || value.endsWith('.lan') || value.endsWith('.home.arpa')) return true;
+  if (value === '::' || value === '::1' || value === '0:0:0:0:0:0:0:1' || value.startsWith('::ffff:') || value.startsWith('fc') || value.startsWith('fd') || value.startsWith('fe8') || value.startsWith('fe9') || value.startsWith('fea') || value.startsWith('feb') || value.startsWith('ff')) return true;
+  const mappedIpv4 = value.match(/^(?:0*:)*ffff:(\d+\.\d+\.\d+\.\d+)$/)?.[1];
+  if (mappedIpv4) return isPrivateNetworkHostname(mappedIpv4);
   const parts = value.split('.');
   if (parts.length !== 4 || parts.some(part => !/^\d+$/.test(part) || Number(part) > 255)) return false;
   const [first, second] = parts.map(Number);
@@ -995,8 +998,7 @@ async function startLinkExtractionJob({ url, title, windowId, requestId = create
   } catch (error) {
     if (!admitted) {
       await chrome.alarms.clear(`${LINK_JOB_TIMEOUT_ALARM_PREFIX}${requestId}`).catch(() => {});
-      notifyLinkJobFailureFallback({ requestId, windowId, url: normalizedUrl, title, error });
-      return requestId;
+      throw error;
     }
     try {
       await failLinkJob(requestId, 'OPEN_LINK_FAILED', serializeError(error));
@@ -1408,12 +1410,13 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       return false;
     }
 
-    void startLinkExtractionJob({ url: linkUrl, title: linkText, windowId, requestId }).catch(error => {
+    void startLinkExtractionJob({ url: linkUrl, title: linkText, windowId, requestId }).then(() => {
+      sendResponse({ accepted: true, requestId, status: t('linkProcessing') });
+    }).catch(error => {
       console.error('Background: failed to start link extraction job', requestId, error);
-      notifyLinkJobFailureFallback({ requestId, windowId, url: linkUrl, title: linkText, error });
+      sendResponse({ accepted: false, requestId, error: serializeError(error) });
     });
-    sendResponse({ accepted: true, requestId, status: t('linkProcessing') });
-    return false;
+    return true;
   }
 
   return false;

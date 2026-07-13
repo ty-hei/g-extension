@@ -52,6 +52,17 @@ test('archive SSE flushes a final data line even when EOF has no newline', async
   assert.deepEqual(payloads, [{ tail: true }]);
 });
 
+test('archive SSE joins multiple data fields from one event before parsing JSON', async function () {
+  const loaded = await createArchiveVm();
+  const reader = makeByteReader('data:{"multi":\ndata:true}\n\ndata:[DONE]\n');
+  const payloads = [];
+
+  const result = await loaded.exports.consumeArchiveSse(reader, { abort() {} }, payload => payloads.push(clone(payload)));
+
+  assert.deepEqual(payloads, [{ multi: true }]);
+  assert.equal(result.doneMarkerSeen, true);
+});
+
 test('archive stream idle timeout aborts the controller and rejects the pending read', async function () {
   const timers = [];
   const cleared = [];
@@ -210,6 +221,36 @@ test('archive send guard prevents concurrent requests and restores controls afte
   assert.equal(loaded.exports.getRequestInFlight(), false);
   assert.equal(loaded.elements.sendButton.disabled, false);
   assert.equal(loaded.elements.chatInput.disabled, false);
+});
+
+test('user cancellation aborts an active archive request without reporting a timeout', async function () {
+  const loaded = await createArchiveVm({
+    apiConfigurations: [{
+      id: 'openai-test',
+      apiType: 'openai',
+      apiKey: 'key',
+      apiEndpoint: 'https://api.example.test/v1/chat/completions',
+      modelName: 'test-model'
+    }],
+    activeConfigurationId: 'openai-test',
+    fetch(_url, init) {
+      return new Promise((resolve, reject) => {
+        init.signal.addEventListener('abort', () => {
+          const error = new Error('aborted');
+          error.name = 'AbortError';
+          reject(error);
+        });
+      });
+    }
+  });
+  const chat = [{ role: 'user', parts: [{ text: 'cancel archive' }], timestamp: 1 }];
+
+  const pending = loaded.exports.callApi('cancel archive', chat);
+  loaded.exports.cancelActiveRequest();
+
+  assert.equal(await pending, false);
+  assert.match(chat.at(-1).parts[0].text, /cancelled/);
+  assert.doesNotMatch(chat.at(-1).parts[0].text, /timed out/);
 });
 
 test('archive Markdown rendering never forwards the sidebar-only options-link trust flag', async function () {
