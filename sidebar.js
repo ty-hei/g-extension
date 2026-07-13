@@ -2013,10 +2013,11 @@ async function performApiCall(
             const lines = buffer.split('\n');
             buffer = done ? '' : lines.pop();
 
-            for (const line of lines) {
-                if (line.trim() === '' || !line.startsWith('data: ')) continue;
+            for (const rawLine of lines) {
+                const line = rawLine.endsWith('\r') ? rawLine.slice(0, -1) : rawLine;
+                if (line.trim() === '' || !line.startsWith('data:')) continue;
 
-                const jsonStr = line.substring(6).trim();
+                const jsonStr = line.slice(5).trimStart();
                 if (jsonStr === '[DONE]') {
                     streamComplete = true;
                     break;

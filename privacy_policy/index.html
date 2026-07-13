@@ -96,7 +96,7 @@
   <div class="container">
     <h1>Smart Sidebar Assistant Privacy Policy</h1>
     <p class="policy-effective-date">
-      <strong>Last Updated:</strong> July 13, 2026
+      <strong>Last Updated:</strong> July 14, 2026
     </p>
     <p class="language-link">This policy is also available in <a href="privacy_policy_zh.html">Chinese (中文)</a>.</p>
     <p class="language-link" style="margin-top: -15px;">
@@ -128,8 +128,8 @@
 
     <h3>User-Generated Content and History</h3>
     <ul>
-      <li><strong>Conversation History:</strong> The complete record of your conversations with the AI. This is stored
-        in your local browser via <code>chrome.storage.local</code>.</li>
+      <li><strong>Conversation History:</strong> Up to the 50 most recent ordinary chat sessions. This is stored in your
+        local browser via <code>chrome.storage.local</code>.</li>
       <li><strong>Archived Chats:</strong> Conversations or Q&A pairs that you manually archive. This is also stored in
         <code>chrome.storage.local</code>.</li>
       <li><strong>Prompt Templates:</strong> The prompt templates you create and save on the management page. This is
@@ -150,10 +150,13 @@
       <li><strong>Regex Extraction:</strong> Regex source text, execution, and match preview are processed locally in a
         Web Worker with a one-second timeout and bounded output. Previewing or copying does not send source or matches
         to a third party. If you use “Design Regex” and then choose to send the prepared request, its page text is sent
-        to the active AI service.</li>
+        to the active AI service and may include recent conversation context like an ordinary chat request. It does not
+        automatically receive the history isolation or webpage-safety instruction used for page/link summaries.</li>
       <li><strong>Selected Text or Images:</strong> Page selections are retrieved and shown as quotes only while this
         extension's sidebar is open in the corresponding browser window; selection capture stops when the sidebar is
-        closed. An image URL is retrieved only when you invoke the image-analysis context menu action.</li>
+        closed. An image URL is retrieved only when you invoke the image-analysis context menu action; rendering the
+        preview may immediately request the image host. After you send, the browser performs another fetch subject to
+        the 10 MiB size, image-type, and 30-second timeout checks, then submits the image data to the active AI service.</li>
     </ul>
 
     <h2>2. How We Use Your Information</h2>
@@ -166,13 +169,13 @@
         actively submit is sent as part of a request to the AI service to get the desired response (e.g., a summary,
         translation, or analysis). Local full-text extraction, regex preview, and copying matches do not send data to AI.</li>
       <li><strong>Maintaining Conversation Context:</strong> Your conversation history is used to build the context for
-        ordinary chat requests, allowing the AI to understand recent interactions. Page/link summary requests exclude
+        ordinary chat and continued archived conversations. Page/link summary requests exclude
         existing conversation history and add a safety instruction that treats webpage content as untrusted data.</li>
       <li><strong>Resource Limits:</strong> Each extracted text field is limited to 200,000 characters. AI-bound text is
         truncated after 120,000 source characters, ordinary chat history included with a request is limited to the most
-        recent 40,000 characters, and fetched images are limited to 10 MB. Regex previews are limited to 1,000 matches
-        and 100,000 output characters. Link-job session data uses a 7 MB internal budget with result space reserved
-        before a tab opens. AI requests stop after two minutes total or 30 seconds without stream data.</li>
+        recent 40,000 characters, and fetched images are limited to 10 MiB. Regex previews are limited to 1,000 matches
+        and 100,000 output characters. Link-job session data uses a 7 MiB internal budget with result space reserved
+        before a tab opens. Streaming requests from the side panel and archive page stop after two minutes total or 30 seconds without stream data.</li>
       <li><strong>Providing Personalized Features:</strong> Prompt templates help you quickly perform common tasks.
         Archiving and history features allow you to review important information.</li>
     </ul>
@@ -196,14 +199,15 @@
       <li><strong>Local Storage:</strong> Your conversation history, archives, and prompt templates are stored on your
         local computer using the <code>chrome.storage.local</code> API. This means the data does not leave your device
         unless you initiate an action that sends it to an AI service.</li>
-      <li><strong>Sync Storage:</strong> Your API configurations are stored using the <code>chrome.storage.sync</code>
-        API. This data is synced across devices where you are logged into the same Google account and is protected by
-        Google's security measures. The developers cannot access this information.</li>
+      <li><strong>Sync Storage:</strong> Your API configurations, including API keys, are stored using
+        <code>chrome.storage.sync</code> and may be synchronized across browsers signed into the same Google account.
+        The developers cannot access this information. The extension adds no application-level encryption; the password
+        input only obscures on-screen display.</li>
       <li><strong>Session Storage:</strong> A link job's URL, title, state, and extracted result are temporarily kept in
-        <code>chrome.storage.session</code>, subject to a 7 MB internal budget, so an opened sidebar can claim the result and the background can recover the
+        <code>chrome.storage.session</code>, subject to a 7 MiB internal budget, so an opened sidebar can claim the result and the background can recover the
         job. Claiming does not delete the record. After a non-empty AI response completes successfully, the sidebar
         acknowledges and removes the job; if AI delivery fails, the claim is released and an alarm wakes a later retry. Any remaining
-        completed or failed record is scheduled for cleanup about 10 minutes after extraction finishes.</li>
+        completed or failed record is scheduled for cleanup about 10 minutes after extraction finishes; an active claim or retry delay postpones cleanup.</li>
       <li><strong>Security Measures:</strong> We follow industry-standard practices to protect your information. For
         example, the API key input field on the options page is a password field (<code>type="password"</code>). The
         extension also sanitizes model-generated Markdown with an HTML allowlist before display. It contains no code
@@ -211,7 +215,9 @@
     </ul>
 
     <h2>4. Information Sharing and Disclosure</h2>
-    <p><strong>We do not share or sell your personal information with any third party.</strong></p>
+    <p><strong>The extension developers do not sell your personal information or independently disclose it to unrelated
+      third parties. When you invoke an online feature, your browser sends the data required for that feature to the AI
+      provider, target website, or image host you selected.</strong></p>
     <p>The core working model of this extension is to act as a "bridge" between you and a third-party AI service. When
       you use this extension, you acknowledge that:</p>
     <ul>
@@ -235,8 +241,8 @@
         configuring an AI API. Close the sidebar to stop selection capture.</li>
       <li><strong>Deletion:</strong>
         <ul>
-          <li>You can permanently delete all conversation history using the "Clear All History" button in the sidebar.
-          </li>
+          <li>You can permanently delete ordinary chat history using the "Clear All History" button in the sidebar.
+            Archived conversations are not removed by that button.</li>
           <li>You can delete individual archived chats or clear all archives on the "Archived Chats" page.</li>
           <li>Uninstalling the extension will remove all data stored in <code>chrome.storage.local</code> (including
             history, archives, and templates).</li>
@@ -256,7 +262,7 @@
     <p>If you have any questions or suggestions about this Privacy Policy, please contact us:</p>
     <ul>
       <li><strong>Email:</strong> <span class="contact-info">rt@heihaheihaha.com</span></li>
-      <li><strong>Project Homepage:</strong> <span class="contact-info">https://github.com/ty-hei/g-extension</span>
+      <li><strong>Project Homepage:</strong> <span class="contact-info">https://github.com/heihaheihaha/g-extension</span>
       </li>
     </ul>
   </div>

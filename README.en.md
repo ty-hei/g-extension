@@ -2,6 +2,9 @@
 
 [![Version](https://img.shields.io/badge/version-1.4.0-blue.svg)](./manifest.json)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![Tests](https://github.com/heihaheihaha/g-extension/actions/workflows/test.yml/badge.svg)](https://github.com/heihaheihaha/g-extension/actions/workflows/test.yml)
+
+[中文](./README.md#chinese) | [Documentation](./docs/README.md#english) | [User Guide](./docs/user-guide.md#english) | [Troubleshooting](./docs/troubleshooting.md#english) | [Contributing](./CONTRIBUTING.md#english)
 
 **An intelligent assistant that seamlessly integrates the power of Large Language Models (LLMs) into your browser's sidebar, designed to revolutionize your web browsing, information retrieval, and content creation experience.**
 
@@ -13,7 +16,7 @@ Smart Sidebar Assistant is more than just a simple chat window; it's an efficien
 
 #### 1. Deep Interaction & AI Conversations
 - **Streamed Responses**: AI answers appear word by word, providing instant feedback and a smoother interaction without waiting for the full response.
-- **Fluent Conversations**: Engage in real-time, continuous dialogues with any language model you configure (like Gemini, GPT series, etc.).
+- **Fluent Conversations**: Engage in real-time conversations with configured Gemini or OpenAI Chat Completions-compatible models.
 - **Context-Aware**: The conversation remembers previous interactions, enabling more intelligent and coherent communication.
 - **Multi-Model Support**: Easily configure and switch between different AI models in the options to suit various needs.
 - **Smart Error Handling**: Provides clear, friendly error messages for invalid API keys, network interruptions, or exceeded quotas to help you quickly identify issues.
@@ -21,7 +24,7 @@ Smart Sidebar Assistant is more than just a simple chat window; it's an efficien
 #### 2. Powerful Content Processing
 - **One-Click Page Summary**: Extract the current page's main article with [Mozilla's Readability.js](https://github.com/mozilla/readability), preserving paragraph, block, and `<br>` boundaries as multiline plain text, then send it to your configured AI service. If reader extraction is unavailable, the extension falls back to visible page text.
 - **Deep Link Analysis**: Drag a link to the preview window or use the context menu. The extension opens an inactive temporary tab, extracts the article with Readability (falling back to visible text), and closes the tab when the job finishes or times out. Up to three link extractions may run concurrently; additional requests are rejected with a visible error instead of opening more tabs.
-- **Image Recognition & Analysis**: Analyze any image on a webpage using the context menu, leveraging the multimodal capabilities of Gemini.
+- **Image Recognition & Analysis**: Select a webpage image from the context menu and submit it when the active model and endpoint support multimodal image input.
 - **Full Visible Text Quoting**: Read the current page's visible `body.innerText` and place it in the sidebar as a local quote. This action does not require an API configuration; the text is sent externally only if you later submit it to an AI service.
 - **Advanced Regex Extraction**: Preview reader text or full visible text and run JavaScript regular expressions—including multiline `m` and dot-all `s` modes—locally in a Web Worker. A one-second timeout and result limits prevent runaway expressions from freezing the sidebar.
 
@@ -34,12 +37,12 @@ Smart Sidebar Assistant is more than just a simple chat window; it's an efficien
 - **Conversation Management**:
     - **Split Conversation**: When switching topics, you can split the current conversation with one click, archiving it and starting a new session.
     - **Archive Conversations**: Archive important conversations or individual Q&A pairs for future reference in a refreshed two-pane archive workspace.
-    - **History Tracking**: All non-temporary conversations are recorded and can be managed and searched on the archive page.
+    - **History Tracking**: Up to 50 recent ordinary chat sessions are retained locally. Split or explicitly archived conversations can be viewed, continued, or deleted from the archive page.
 
 #### 4. High Customizability
-- **Flexible API Configuration**: Supports adding multiple API configurations (for Google Gemini or any OpenAI-compatible API) and setting any one as active at any time.
-- **Custom Models**: You can specify the exact model name for each API configuration (e.g., `gemini-1.5-flash-latest`, `gpt-4o`).
-- **OpenAI Compatibility**: For OpenAI-compatible APIs, you can customize the API Endpoint URL to connect to any service that adheres to the standard.
+- **Flexible API Configuration**: Supports multiple Google Gemini or OpenAI Chat Completions-compatible configurations and lets you choose the active one.
+- **Custom Models**: You can specify the exact model ID supported by each configured provider.
+- **OpenAI Compatibility**: Use a custom Chat Completions endpoint that accepts the documented request body and streaming SSE response format.
 - **Advanced Feature Toggle**: Keep the regex extraction tool hidden by default and enable it only when needed from the Options page.
 
 ## 🚀 Installation & Configuration
@@ -63,7 +66,7 @@ After installation, proceed to **Step 2** if you want to use AI summaries or cha
 
 ##### Step 2: Configure the API
 1.  After installation, right-click the Smart Sidebar Assistant icon in your browser's toolbar and select "Options".
-2.  On the configuration page, click "Add/Edit Configuration".
+2.  On the configuration page, find the "Add/Edit Configuration" section.
 3.  Fill in the following information:
     - **Configuration Name**: Give your configuration an easily recognizable name (e.g., "My Gemini Key").
     - **API Key**: Paste the API key you obtained from your AI service provider.
@@ -74,7 +77,7 @@ After installation, proceed to **Step 2** if you want to use AI summaries or cha
 
 ## 🛠️ How to Use
 - **Open Sidebar**: Click the extension icon in the browser toolbar.
-- **Summarize/Analyze**: Use “Summarize Current Page” in the sidebar, right-click a link to summarize that link, or right-click an image to analyze it.
+- **Summarize/Analyze**: Use “Summarize Current Page” in the sidebar or right-click a link to summarize it. For an image, first open the side panel in that window, then use the image context-menu action.
 - **Process Text**: Open the sidebar, then select text on a webpage to place it in the quote area.
 - **Summarize Links**: Drag a link from a webpage to the preview box that appears in the bottom-right corner, then click summarize.
 - **Extract Full Visible Text**: Use “Extract Full Text” to create a local quote without calling an AI service.
@@ -86,17 +89,31 @@ After installation, proceed to **Step 2** if you want to use AI summaries or cha
 - **`tabs`**: Resolve the correct tab/window and create, monitor, then close the inactive temporary tab used for link extraction.
 - **`alarms`**: Enforce link-extraction timeouts, wake expired delivery leases/retries, and clean up completed job records even if the service worker sleeps.
 - **`storage`**: Sync API/regex settings, store local chat history, and temporarily retain pending link jobs in `chrome.storage.session` so the sidebar can recover them.
-- **`contextMenus` + `sidePanel`**: Provide link/image actions and open results in the initiating window's sidebar.
+- **`contextMenus` + `sidePanel`**: Provide link/image actions and the side-panel UI. Link summaries can open it in the initiating window; image analysis requires that window's side panel to be open first.
 - **`<all_urls>` host access**: Support extraction and opt-in selection/link tools on arbitrary user-chosen pages, plus user-configured OpenAI-compatible endpoints. A host permission allows access; it does not by itself send page content anywhere.
 - Page extraction and regex matching happen in the browser. Page/link summaries and chat content are sent directly from your browser to the AI endpoint you configured; they do not pass through a developer-operated server.
-- **Resource bounds**: Extracted text fields are limited to 200,000 characters. AI-bound text is truncated after 120,000 source characters, ordinary chat context sent with a request is limited to the most recent 40,000 characters, and fetched images are limited to 10 MB. Regex previews are limited to 1,000 matches and 100,000 output characters. Link-job session data has a 7 MB internal budget with space reserved before opening a tab. AI requests stop after two minutes total or 30 seconds without stream data.
-- **Summary isolation and recovery**: Page/link summary requests exclude existing chat history and include a safety instruction that treats webpage content as untrusted data. A terminal link result remains in session storage for recovery for up to about 10 minutes; claiming does not delete it. After a non-empty AI response completes successfully, the sidebar acknowledges and removes the record. Failed AI delivery releases the claim for a later retry.
+- **Resource bounds**: Extracted text fields are limited to 200,000 characters. AI-bound text is truncated after 120,000 source characters, ordinary chat context sent with a request is limited to the most recent 40,000 characters, and fetched images are limited to 10 MiB. Regex previews are limited to 1,000 matches and 100,000 output characters. Link-job session data has a 7 MiB internal budget with space reserved before opening a tab. Streaming requests from the side panel and archive page stop after two minutes total or 30 seconds without stream data.
+- **Summary isolation and recovery**: Page/link summary requests exclude existing chat history and include a safety instruction that treats webpage content as untrusted data. Terminal link results are scheduled for cleanup about 10 minutes after completion, but an active claim or retry delay postpones cleanup. A successful non-empty AI response is acknowledged and removes the record immediately; failed delivery releases the claim for a later retry.
 
 ## 🔧 Tech Stack
 - **Core**: HTML, CSS, JavaScript (ES6+)
 - **Browser APIs**: Chrome Extension Manifest V3 (Chrome 120+), Side Panel API, Context Menus API, Storage API, Alarms API, Web Workers
 - **Content Extraction**: [Mozilla/Readability.js](https://github.com/mozilla/readability)
 - **Markdown Rendering**: [Marked.js](https://marked.js.org/)
+
+### Automated tests
+
+The project uses Node.js's built-in test runner and has no third-party test dependencies:
+
+```bash
+npm test
+npm run test:coverage
+npm run test:browser
+```
+
+`test:browser` requires Chrome or Chromium to be installed locally. The suite covers extraction contracts, the regex Worker, link-job lifecycle and recovery, streaming API parsing, chat queues/history budgets, archive persistence, Markdown sanitization, content-script boundaries, and packaged-resource integrity.
+
+See [Development and Testing](./docs/development.md#english) for the test layers, browser-path environment variables, CI behavior, and guidance for adding coverage.
 
 ## 📝 Changelog
 
@@ -128,7 +145,7 @@ After installation, proceed to **Step 2** if you want to use AI summaries or cha
     - Restored link drag-and-drop preview from the bottom-right floating window.
     - Added the "Summarize Link" context menu action.
 - **Detail Improvements**:
-    - Page summary requests now include the page title and URL in chat history for better context.
+    - Page summaries show the title and URL in local chat history for reference; those display fields are excluded from API history.
 
 #### v1.3.0
 - Added English and Chinese interface switching.

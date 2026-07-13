@@ -61,8 +61,15 @@
     .policy-effective-date {
       text-align: center;
       color: #6c757d;
-      margin-bottom: 25px;
+      margin-bottom: 15px;
       font-style: italic;
+    }
+
+    .language-link {
+      text-align: center;
+      display: block;
+      margin-bottom: 25px;
+      font-size: 0.9em;
     }
 
     .contact-info,
@@ -89,9 +96,10 @@
   <div class="container">
     <h1>智能侧边栏助手 (Smart Sidebar Assistant) 隐私政策</h1>
     <p class="policy-effective-date">
-      <strong>更新日期：</strong> 2026年7月13日
+      <strong>更新日期：</strong> 2026年7月14日
     </p>
-    <p class="policy-effective-date" style="margin-top: -15px;">
+    <p class="language-link">本政策另提供<a href="index.html">英文版本 (English)</a>。</p>
+    <p class="language-link" style="margin-top: -15px;">
       <a href="https://chromewebstore.google.com/detail/%E6%99%BA%E8%83%BD%E4%BE%A7%E8%BE%B9%E6%A0%8F-ai%EF%BC%9A%E7%BD%91%E9%A1%B5%E6%80%BB%E7%BB%93%E4%B8%8E%E5%AF%B9%E8%AF%9D%E5%8A%A9%E6%89%8B/eomfjfhjglppmkefbnhfmmdfciemlfie"
         target="_blank">前往 Chrome 应用商店查看</a>
     </p>
@@ -112,7 +120,7 @@
 
     <h3>用户生成内容与历史记录</h3>
     <ul>
-      <li><strong>对话历史:</strong> 您与 AI 的完整对话记录。此信息存储在您本地浏览器的 <code>chrome.storage.local</code> 中。</li>
+      <li><strong>对话历史:</strong> 最近最多 50 个普通聊天会话。此信息存储在您本地浏览器的 <code>chrome.storage.local</code> 中。</li>
       <li><strong>已存档对话:</strong> 您手动存档的对话或问答对。此信息同样存储在 <code>chrome.storage.local</code> 中。</li>
       <li><strong>Prompt 模板:</strong> 您在管理页面创建和保存的 Prompt 模板。此信息存储在 <code>chrome.storage.local</code> 中。</li>
     </ul>
@@ -121,8 +129,8 @@
     <ul>
       <li><strong>当前网页内容:</strong> “总结当前网页”会优先使用 Readability 提取正文，并将段落、块元素和换行边界保留为多行纯文本；失败时回退到页面可见文本，再将结果发送给您配置的 AI 服务。“提取全文”读取页面的可见 <code>body.innerText</code> 并先作为本地引用，不会因提取动作本身调用 AI。</li>
       <li><strong>链接内容:</strong> 当您拖拽链接或通过右键菜单请求总结链接时，插件会打开一个非活动的临时后台标签页。目标网站会像普通访问一样收到网络请求，并可能使用您已有的登录状态、Cookie 和自身的分析工具。插件在页面加载后使用 Readability 提取正文（失败时回退到可见文本），随后关闭临时标签页。最多同时运行 3 个链接提取任务；超出的请求会被拒绝，不会继续打开标签页。</li>
-      <li><strong>正则提取:</strong> 正则源文本、表达式执行和匹配预览均在本地 Web Worker 中处理，并设有 1 秒执行超时和结果上限。原文与匹配结果不会因预览或复制而发送给第三方；若您使用“设计正则”并随后主动发送生成的请求，所含网页文本才会发送到当前 AI 服务。</li>
-      <li><strong>选中的文本或图片:</strong> 只有当对应浏览器窗口的插件侧边栏处于打开状态时，网页选中文本才会被获取并显示为引用；侧边栏关闭后不捕获选区。图片 URL 仅在您使用图片分析右键菜单时获取。</li>
+      <li><strong>正则提取:</strong> 正则源文本、表达式执行和匹配预览均在本地 Web Worker 中处理，并设有 1 秒执行超时和结果上限。原文与匹配结果不会因预览或复制而发送给第三方；若您使用“设计正则”并随后主动发送生成的请求，所含网页文本会发送到当前 AI 服务，并可能像普通聊天一样携带最近的对话上下文。该请求不会自动采用页面/链接摘要的历史隔离与网页安全指令。</li>
+      <li><strong>选中的文本或图片:</strong> 只有当对应浏览器窗口的插件侧边栏处于打开状态时，网页选中文本才会被获取并显示为引用；侧边栏关闭后不捕获选区。图片 URL 仅在您使用图片分析右键菜单时获取；生成预览时可能立即向图片源站请求资源。点击发送后，浏览器会再次执行受 10 MiB 大小、图片类型和 30 秒超时限制的抓取，再把图片数据发送给当前 AI 服务。</li>
     </ul>
 
     <h2>2. 我们如何使用您的信息</h2>
@@ -131,8 +139,8 @@
       <li><strong>建立与 AI 服务的连接:</strong> 您的 API 密钥和配置信息被用来直接从您的浏览器向您选择的第三方 AI 服务（如 Google Gemini 或 OpenAI 兼容 API）发送请求。
       </li>
       <li><strong>执行您的指令:</strong> 您主动提交的文字、引用、页面/链接总结内容或图片数据，会作为请求的一部分发送给 AI 服务，以获得您期望的回复（如总结、翻译、分析结果等）。仅执行本地全文提取、正则预览或复制匹配结果不会发送数据给 AI。</li>
-      <li><strong>维护对话上下文:</strong> 普通聊天请求会携带最近的对话历史，使 AI 能够理解近期交流；页面/链接摘要请求不会携带既有对话历史，并会附加将网页内容视为不可信数据的安全指令。</li>
-      <li><strong>资源上限:</strong> 每个提取文本字段最多保留 200,000 字符；发送给 AI 的文本会在 120,000 个源字符后截断；普通聊天请求最多携带最近 40,000 字符的历史上下文；下载处理的图片上限为 10 MB。正则预览最多返回 1,000 个匹配和 100,000 个结果字符。链接任务会话数据使用 7 MB 内部预算，并在打开标签页前预留结果空间；AI 请求总时限为 2 分钟，流式响应连续 30 秒无数据时终止。</li>
+      <li><strong>维护对话上下文:</strong> 普通聊天和在存档中继续对话会携带最近的对话历史，使 AI 能够理解近期交流；页面/链接摘要请求不会携带既有对话历史，并会附加将网页内容视为不可信数据的安全指令。</li>
+      <li><strong>资源上限:</strong> 每个提取文本字段最多保留 200,000 字符；发送给 AI 的文本会在 120,000 个源字符后截断；普通聊天请求最多携带最近 40,000 字符的历史上下文；下载处理的图片上限为 10 MiB。正则预览最多返回 1,000 个匹配和 100,000 个结果字符。链接任务会话数据使用 7 MiB 内部预算，并在打开标签页前预留结果空间；侧边栏与存档页的流式 AI 请求总时限为 2 分钟，连续 30 秒无流数据时终止。</li>
       <li><strong>提供个性化功能:</strong> Prompt 模板帮助您快速执行常用任务。存档和历史记录功能方便您回顾重要的信息。</li>
     </ul>
 
@@ -151,15 +159,14 @@
     <ul>
       <li><strong>本地存储:</strong> 您的对话历史、存档和 Prompt 模板都通过 <code>chrome.storage.local</code> API
         存储在您的本地计算机上。这意味着除非您手动操作，否则这些信息不会离开您的设备。</li>
-      <li><strong>同步存储:</strong> 您的 API 配置信息通过 <code>chrome.storage.sync</code> API 存储。它会在您登录了同一 Google 账户的设备间同步，但同样受到
-        Google 的安全保护，开发者无法访问。</li>
-      <li><strong>会话存储:</strong> 链接任务的 URL、标题、状态及提取结果会暂存在 <code>chrome.storage.session</code> 中，并受 7 MB 内部预算约束，以便侧边栏打开后领取结果及后台恢复任务。“领取”本身不会删除记录；AI 成功返回非空响应后，侧边栏才会确认并删除任务；若 AI 发送失败，则释放领取状态并由定时任务稍后唤醒重试。仍未删除的完成或失败记录计划在提取结束约 10 分钟后清理。</li>
+      <li><strong>同步存储:</strong> 您的 API 配置信息（包括 API 密钥）通过 <code>chrome.storage.sync</code> API 存储，并可能在您登录同一 Google 账户的浏览器间同步。开发者无法访问这些信息；插件没有额外实施应用层加密，密码输入框仅用于隐藏屏幕显示。</li>
+      <li><strong>会话存储:</strong> 链接任务的 URL、标题、状态及提取结果会暂存在 <code>chrome.storage.session</code> 中，并受 7 MiB 内部预算约束，以便侧边栏打开后领取结果及后台恢复任务。“领取”本身不会删除记录；AI 成功返回非空响应后，侧边栏才会确认并删除任务；若 AI 发送失败，则释放领取状态并由定时任务稍后唤醒重试。仍未删除的完成或失败记录会在提取结束约 10 分钟后尝试清理，有效的领取或重试等待会推迟清理。</li>
       <li><strong>安全措施:</strong> 我们采取了行业标准的做法来保护您的信息安全。例如，API
         密钥在选项页的输入框中显示为密码（<code>type="password"</code>），模型生成的 Markdown 会先经过 HTML allowlist 清洗再显示。插件不包含任何可能将您的数据发送给开发者的代码。</li>
     </ul>
 
     <h2>4. 信息共享与披露</h2>
-    <p><strong>我们不会与任何第三方共享或出售您的个人信息。</strong></p>
+    <p><strong>插件开发者不会出售您的个人信息，也不会自行向无关第三方披露。您主动使用联网功能时，浏览器会按您的指令向所选 AI 服务、目标网站或图片源站传输实现该功能所需的数据。</strong></p>
     <p>本插件的核心工作模式是作为您与第三方 AI 服务之间的“桥梁”。当您使用本插件时，您需要知晓：</p>
     <ul>
       <li>您请求处理的数据（如网页内容、您输入的文字等）以及您的部分配置信息（如 API 密钥），将由您的浏览器直接发送至您所配置的第三方 AI 服务提供商（例如 Google 或其他 OpenAI 兼容服务商）。</li>
@@ -175,7 +182,7 @@
       <li><strong>本地处理选择:</strong> 您可以在不配置 API 的情况下使用可见全文提取和正则预览/复制。关闭侧边栏即可停止选区捕获。</li>
       <li><strong>删除:</strong>
         <ul>
-          <li>您可以通过侧边栏中的“清除所有历史”按钮永久删除所有对话历史。</li>
+          <li>您可以通过侧边栏中的“清除所有历史”按钮永久删除普通聊天历史；已存档对话不会被该按钮删除。</li>
           <li>您可以在“已存档对话”页面单独删除某条存档，或清空所有存档。</li>
           <li>卸载本插件将清除所有存储在 <code>chrome.storage.local</code> 中的数据（包括历史记录、存档和模板）。</li>
         </ul>
@@ -192,7 +199,7 @@
     <p>如果您对本隐私政策有任何疑问或建议，请通过以下方式与我们联系：</p>
     <ul>
       <li><strong>电子邮件:</strong> <span class="contact-info">rt@heihaheihaha.com</span></li>
-      <li><strong>项目主页:</strong> <span class="contact-info">https://github.com/ty-hei/g-extension</span></li>
+      <li><strong>项目主页:</strong> <span class="contact-info">https://github.com/heihaheihaha/g-extension</span></li>
     </ul>
   </div>
 

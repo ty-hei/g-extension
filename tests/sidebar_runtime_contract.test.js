@@ -34,6 +34,7 @@ function createSidebarContext(options = {}) {
     URL,
     setTimeout: options.setTimeout || setTimeout,
     clearTimeout: options.clearTimeout || clearTimeout,
+    Worker: options.Worker,
     console: {
       log() {},
       warn() {},
@@ -243,6 +244,62 @@ test('stream idle timeout aborts the request controller and rejects a pending re
   assert.deepEqual(clearedTimers, [scheduledTimer]);
 });
 
+test('regex preview terminates the production Worker wrapper at its one-second deadline', async function () {
+  const timers = [];
+  const clearedTimers = [];
+  let workerInstance = null;
+  class FakeWorker {
+    constructor(url) {
+      this.url = url;
+      this.listeners = new Map();
+      this.terminateCount = 0;
+      workerInstance = this;
+    }
+
+    addEventListener(type, listener) {
+      this.listeners.set(type, listener);
+    }
+
+    postMessage(payload) {
+      this.payload = payload;
+    }
+
+    terminate() {
+      this.terminateCount += 1;
+    }
+  }
+  const loaded = createSidebarContext({
+    Worker: FakeWorker,
+    setTimeout(callback, delay) {
+      const timer = { callback, delay };
+      timers.push(timer);
+      return timer;
+    },
+    clearTimeout(timer) {
+      clearedTimers.push(timer);
+    }
+  });
+
+  const payload = { id: 7, sourceText: 'a'.repeat(100), patternInput: '/a+/' };
+  const pending = loaded.getBinding('runRegexPreviewInWorker')(payload);
+  const timeoutRejection = assert.rejects(pending, /REGEX_TIMEOUT/);
+  assert.equal(workerInstance.url, `chrome-extension://${loaded.extensionId}/regex_worker.js`);
+  assert.deepEqual(toPlain(workerInstance.payload), payload);
+  assert.equal(timers.length, 1);
+  assert.equal(timers[0].delay, 1000);
+
+  timers[0].callback();
+  await timeoutRejection;
+  assert.equal(workerInstance.terminateCount, 1);
+  assert.equal(loaded.getBinding('activeRegexWorker'), null);
+  assert.equal(loaded.getBinding('activeRegexWorkerReject'), null);
+  assert.equal(loaded.getBinding('activeRegexWorkerTimeout'), null);
+  assert.ok(clearedTimers.includes(timers[0]));
+
+  workerInstance.listeners.get('message')({ data: { ok: true } });
+  assert.equal(workerInstance.terminateCount, 1);
+});
+
 test('window-scoped sidebar messages fail closed for missing, malformed, or mismatched window IDs', function () {
   const loaded = createSidebarContext();
   loaded.assign('currentWindowId = 9; currentSelectedText = null; currentSelectedSource = null;');
@@ -435,9 +492,10 @@ test('acknowledge and release reject success:false responses, while a successful
   responseMode = 'release-success';
   const beforeRelease = Date.now();
   await releaseClaimedLinkJob(job, 'good-token', new Error('retry delivery'));
+  const afterRelease = Date.now();
   assert.equal(timers.length, 1);
-  assert.ok(timers[0].delay >= retryAt - beforeRelease);
-  assert.ok(timers[0].delay <= retryAt - beforeRelease + 150);
+  assert.ok(timers[0].delay >= Math.max(100, retryAt - afterRelease + 100));
+  assert.ok(timers[0].delay <= Math.max(100, retryAt - beforeRelease + 100));
   assert.equal(loaded.getBinding('linkJobRetryTimers').has(job.requestId), true);
 
   timers[0].callback();

@@ -10,6 +10,33 @@
   <script src="../libs/marked.min.js"></script>
   <script src="../libs/safe_markdown.js"></script>
   <script>
+    window.contentScriptMessages = [];
+    window.contentScriptShadowAttachments = [];
+    const nativeAttachShadow = Element.prototype.attachShadow;
+    Element.prototype.attachShadow = function attachShadowForHarness(options) {
+      const root = nativeAttachShadow.call(this, options);
+      window.contentScriptShadowAttachments.push({ host: this, root, mode: options && options.mode });
+      return root;
+    };
+
+    const chromeMock = window.chrome || {};
+    Object.defineProperty(chromeMock, 'runtime', {
+      configurable: true,
+      value: {
+        async sendMessage(message) {
+          window.contentScriptMessages.push(message);
+          if (message.action === 'shouldCaptureSelection') return { capture: false };
+          if (message.action === 'summarizeLinkTarget') {
+            return { accepted: true, requestId: 'browser-smoke-link' };
+          }
+          return { success: true };
+        }
+      }
+    });
+    window.chrome = chromeMock;
+  </script>
+  <script src="../content_script.js"></script>
+  <script>
     (async () => {
       const results = [];
       const check = (name, passed, details = '') => results.push({ name, passed: Boolean(passed), details });
@@ -27,6 +54,59 @@
       check('https links are retained', links.some(link => link.getAttribute('href') === 'https://example.com/'));
       check('event/style attributes are stripped', links.every(link => !link.hasAttribute('onclick') && !link.hasAttribute('style')));
       check('safe links get rel protection', links.filter(link => link.hasAttribute('href')).every(link => link.getAttribute('rel') === 'noopener noreferrer'));
+
+      const previewBeforeDrag = document.getElementById('g-extension-link-preview');
+      const draggedLink = document.createElement('a');
+      draggedLink.href = 'https://example.com/dragged article';
+      draggedLink.textContent = 'dragged article';
+      document.body.appendChild(draggedLink);
+      draggedLink.dispatchEvent(new Event('dragstart', { bubbles: true, cancelable: true }));
+
+      const preview = document.getElementById('g-extension-link-preview');
+      const shadowAttachment = window.contentScriptShadowAttachments.find(entry => entry.host === preview);
+      check('link preview is created lazily by a real drag event', !previewBeforeDrag && preview && preview.style.display === 'block');
+      check(
+        'link preview uses a genuinely closed ShadowRoot',
+        preview && preview.shadowRoot === null && shadowAttachment &&
+          shadowAttachment.mode === 'closed' && shadowAttachment.root.mode === 'closed'
+      );
+      check(
+        'link preview styles stay inside the ShadowRoot',
+        shadowAttachment && shadowAttachment.root.querySelector('style') &&
+          document.querySelectorAll('style').length === 0
+      );
+
+      const previewContent = shadowAttachment && shadowAttachment.root.querySelector('.g-preview-content');
+      const dropEvent = new Event('drop', { bubbles: true, cancelable: true });
+      Object.defineProperty(dropEvent, 'dataTransfer', {
+        value: {
+          getData(type) {
+            return type === 'text/uri-list'
+              ? '# browser smoke\nhttps://example.com/dropped article'
+              : '';
+          }
+        }
+      });
+      previewContent.dispatchEvent(dropEvent);
+      await new Promise(resolve => setTimeout(resolve, 0));
+      const renderedLink = shadowAttachment.root.querySelector('.g-preview-link-text');
+      check(
+        'drop canonicalizes and renders the URL as text',
+        renderedLink && renderedLink.textContent === 'https://example.com/dropped%20article'
+      );
+      check(
+        'drop opens the side panel through the extension message boundary',
+        window.contentScriptMessages.some(message => message.action === 'openSidePanel')
+      );
+
+      shadowAttachment.root.querySelector('.g-preview-summarize-btn').click();
+      await new Promise(resolve => setTimeout(resolve, 0));
+      const summarizeMessage = window.contentScriptMessages.find(message => message.action === 'summarizeLinkTarget');
+      check(
+        'summarize action sends the validated URL and closes the preview',
+        summarizeMessage && summarizeMessage.url === 'https://example.com/dropped%20article' &&
+          preview.style.display === 'none'
+      );
 
       const runWorker = (payload, timeoutMs = 1000) => new Promise((resolve, reject) => {
         const worker = new Worker('../regex_worker.js');

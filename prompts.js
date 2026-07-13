@@ -112,40 +112,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Define presets based on CURRENT language.
     const presetsDefinition = getPresetPrompts();
 
-    let madeChangesToStoredStructure = false;
-
-    // 1. Update existing presets to match current language definitions
-    prompts.forEach(p => {
-        if (p.isPreset) {
-            const freshDef = presetsDefinition.find(def => def.id === p.id);
-            if (freshDef) {
-                // Overwrite name and content to ensure language switch takes effect for presets
-                if (p.name !== freshDef.name || p.content !== freshDef.content) {
-                    p.name = freshDef.name;
-                    p.content = freshDef.content;
-                    madeChangesToStoredStructure = true;
-                }
-            }
-        }
-    });
-
-    // 2. Add any missing presets
-    presetsDefinition.forEach(definedPreset => {
-        const existingPromptIndex = prompts.findIndex(p => p.id === definedPreset.id);
-        if (existingPromptIndex === -1) {
-            prompts.unshift({ ...definedPreset });
-            madeChangesToStoredStructure = true;
-        }
-    });
-
-    // 3. Fix any flags (ensure custom prompts are not flagged as presets)
-    prompts.forEach(p => {
-        const isActuallyPreset = presetsDefinition.some(dp => dp.id === p.id);
-        if (!isActuallyPreset && p.isPreset !== false) {
-            p.isPreset = false;
-            madeChangesToStoredStructure = true;
-        }
-    });
+    const presetIds = new Set(presetsDefinition.map(preset => preset.id));
+    const normalizedPrompts = [
+      ...presetsDefinition.map(preset => ({ ...preset })),
+      ...prompts
+        .filter(prompt => !presetIds.has(prompt.id))
+        .map(prompt => ({ ...prompt, isPreset: false }))
+    ];
+    const madeChangesToStoredStructure =
+      JSON.stringify(prompts) !== JSON.stringify(normalizedPrompts);
+    prompts = normalizedPrompts;
 
     if (!result.promptTemplates || madeChangesToStoredStructure) {
         await savePrompts();

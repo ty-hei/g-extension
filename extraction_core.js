@@ -28,7 +28,11 @@
     if (!Number.isFinite(numberValue) || numberValue <= 0) {
       return fallback;
     }
-    return Math.min(Math.floor(numberValue), hardMaximum || fallback);
+    var integerValue = Math.floor(numberValue);
+    if (integerValue <= 0) {
+      return fallback;
+    }
+    return Math.min(integerValue, hardMaximum || fallback);
   }
 
   function takeSafePrefix(value, maxChars) {

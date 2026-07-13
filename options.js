@@ -224,7 +224,10 @@ document.addEventListener('DOMContentLoaded', function() {
       regexPatternInput.value = DEFAULT_REGEX_PATTERN;
     }
     if (regexFlagsInput && !regexFlagsInput.value.trim()) {
-      regexFlagsInput.value = DEFAULT_REGEX_FLAGS;
+      const parsedPattern = parseRegexPatternInput(regexPatternInput?.value || '');
+      if (!parsedPattern.isLiteral || !parsedPattern.flags) {
+        regexFlagsInput.value = DEFAULT_REGEX_FLAGS;
+      }
     }
   }
 
@@ -238,14 +241,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
   function parseRegexPatternInput(patternInput) {
     const rawPattern = (patternInput || '').trim();
-    const literalMatch = rawPattern.match(/^\/([\s\S]*)\/([dgimsuvy]*)$/);
-    if (!literalMatch) {
-      return { pattern: rawPattern, flags: '' };
+    if (typeof RegexEngine !== 'undefined' && typeof RegexEngine.parseRegexPattern === 'function') {
+      return RegexEngine.parseRegexPattern(rawPattern);
     }
-    return {
-      pattern: literalMatch[1],
-      flags: literalMatch[2] || ''
-    };
+    return { pattern: rawPattern, flags: '', isLiteral: false };
   }
 
   function validateRegexSettings() {
@@ -256,7 +255,9 @@ document.addEventListener('DOMContentLoaded', function() {
     ensureDefaultRegexSettings();
     const parsedPattern = parseRegexPatternInput(regexPatternInput.value);
     const pattern = parsedPattern.pattern;
-    const flags = normalizeRegexFlags(regexFlagsInput.value || parsedPattern.flags);
+    const flags = normalizeRegexFlags(
+      regexFlagsInput.value.trim() || parsedPattern.flags || DEFAULT_REGEX_FLAGS
+    );
 
     if (!pattern) {
       throw new Error(t('regexPatternRequired'));
