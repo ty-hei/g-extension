@@ -69,6 +69,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   function updateInterfaceLanguage() {
+    document.documentElement?.setAttribute('lang', currentLanguage === 'zh' ? 'zh-CN' : 'en');
     document.querySelectorAll('[data-i18n]').forEach(el => {
         const key = el.getAttribute('data-i18n');
         if (translations[currentLanguage][key]) {

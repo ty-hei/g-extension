@@ -128,10 +128,8 @@
 
     <h3>User-Generated Content and History</h3>
     <ul>
-      <li><strong>Conversation History:</strong> Up to the 50 most recent ordinary chat sessions. This is stored in your
-        local browser via <code>chrome.storage.local</code>.</li>
-      <li><strong>Archived Chats:</strong> Conversations or Q&A pairs that you manually archive. This is also stored in
-        <code>chrome.storage.local</code>.</li>
+      <li><strong>Conversation History:</strong> Up to the 50 most recent ordinary chat sessions. Conversations are stored as separate indexed records in <code>chrome.storage.local</code>, with a 512 KiB per-record limit and 7 MiB history-store budget.</li>
+      <li><strong>Archived Chats:</strong> Up to 200 conversations or Q&A pairs that you manually archive, using the same per-record and store budgets in a separate <code>chrome.storage.local</code> index.</li>
       <li><strong>Prompt Templates:</strong> The prompt templates you create and save on the management page. This is
         stored in <code>chrome.storage.local</code>.</li>
     </ul>
@@ -184,7 +182,7 @@
     <ul>
       <li><strong>Compatibility:</strong> Version 1.4.0 requires Chrome 120 or later as the tested baseline for the side
         panel, session storage, alarms, and Web Worker workflow.</li>
-      <li><code>activeTab</code> and <code>scripting</code>: Run the requested page extractor in the tab you selected.</li>
+      <li><code>scripting</code>: Run the requested page extractor in the tab you selected; page scope is controlled by host access.</li>
       <li><code>tabs</code>: Resolve the correct window/tab and create, monitor, then close the inactive temporary tab
         used for link extraction.</li>
       <li><code>alarms</code>: Enforce link-job timeouts, wake expired delivery leases/retries, and clean up records while the background service worker may be asleep.</li>
@@ -215,6 +213,7 @@
     </ul>
 
     <h2>4. Information Sharing and Disclosure</h2>
+    <p class="important-note"><strong>Chrome Web Store Limited Use:</strong> Data obtained through Chrome APIs is used only to provide or improve the extension's prominent user-facing features. It is not sold, used for advertising, transferred for credit or lending decisions, or accessed by humans except with the user's affirmative consent for security, legal compliance, or support. The extension's use and transfer of information complies with the Chrome Web Store User Data Policy, including the Limited Use requirements.</p>
     <p><strong>The extension developers do not sell your personal information or independently disclose it to unrelated
       third parties. When you invoke an online feature, your browser sends the data required for that feature to the AI
       provider, target website, or image host you selected.</strong></p>

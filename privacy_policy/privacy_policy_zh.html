@@ -120,8 +120,8 @@
 
     <h3>用户生成内容与历史记录</h3>
     <ul>
-      <li><strong>对话历史:</strong> 最近最多 50 个普通聊天会话。此信息存储在您本地浏览器的 <code>chrome.storage.local</code> 中。</li>
-      <li><strong>已存档对话:</strong> 您手动存档的对话或问答对。此信息同样存储在 <code>chrome.storage.local</code> 中。</li>
+      <li><strong>对话历史:</strong> 最近最多 50 个普通聊天会话。每个会话作为独立索引记录存储在 <code>chrome.storage.local</code> 中，单条上限 512 KiB，历史存储总预算 7 MiB。</li>
+      <li><strong>已存档对话:</strong> 最多 200 个您手动存档的对话或问答对，使用独立索引，并采用相同的单条与总预算限制。</li>
       <li><strong>Prompt 模板:</strong> 您在管理页面创建和保存的 Prompt 模板。此信息存储在 <code>chrome.storage.local</code> 中。</li>
     </ul>
 
@@ -147,7 +147,7 @@
     <h3>浏览器权限用途</h3>
     <ul>
       <li><strong>兼容性:</strong> v1.4.0 要求 Chrome 120 或更高版本，以支持并统一验证侧边栏、会话存储、定时任务和 Web Worker 工作流。</li>
-      <li><code>activeTab</code> 与 <code>scripting</code>：在您指定的标签页中按需运行网页提取器。</li>
+      <li><code>scripting</code>：在您指定的标签页中按需运行网页提取器；可处理页面范围由主机权限控制。</li>
       <li><code>tabs</code>：定位正确的窗口/标签页，并创建、监控和关闭链接提取所需的非活动临时标签页。</li>
       <li><code>alarms</code>：在后台 Service Worker 休眠期间仍可执行链接任务超时、领取租约/重试唤醒与清理。</li>
       <li><code>storage</code>：保存同步设置、本地聊天记录和临时链接任务。</li>
@@ -166,6 +166,7 @@
     </ul>
 
     <h2>4. 信息共享与披露</h2>
+    <p class="important-note"><strong>Chrome 应用商店“有限使用”承诺：</strong>通过 Chrome API 获得的数据仅用于提供或改进插件中清晰可见、面向用户的功能；不会出售，不用于广告，不会为信贷或贷款决策而转移，也不会由人工读取，除非用户明确同意且该访问用于安全、法律合规或支持。本插件对信息的使用和传输遵守 Chrome 应用商店用户数据政策（包括 Limited Use 要求）。</p>
     <p><strong>插件开发者不会出售您的个人信息，也不会自行向无关第三方披露。您主动使用联网功能时，浏览器会按您的指令向所选 AI 服务、目标网站或图片源站传输实现该功能所需的数据。</strong></p>
     <p>本插件的核心工作模式是作为您与第三方 AI 服务之间的“桥梁”。当您使用本插件时，您需要知晓：</p>
     <ul>

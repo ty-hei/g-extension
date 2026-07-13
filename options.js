@@ -166,6 +166,7 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   function updateInterfaceLanguage() {
+    document.documentElement?.setAttribute('lang', currentLanguage === 'zh' ? 'zh-CN' : 'en');
     // Update static text
     document.querySelectorAll('[data-i18n]').forEach(el => {
       const key = el.getAttribute('data-i18n');

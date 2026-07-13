@@ -621,6 +621,10 @@ button#toggleMoreActionsButton.active {
 
 .copy-action,
 .archive-action {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  font-family: inherit;
   cursor: pointer;
   font-size: 1.2em;
   line-height: 1;

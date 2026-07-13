@@ -209,6 +209,8 @@
         }
 
         .lang-switch {
+            background: transparent;
+            font-family: inherit;
             font-size: 0.9rem;
             color: var(--text-secondary);
             cursor: pointer;
@@ -969,7 +971,7 @@
             </a>
             <div class="nav-right">
                 <a href="api_guide.html" class="nav-link" data-i18n="apiGuide">API 指南</a>
-                <span class="lang-switch" onclick="switchLang()" id="langBtn">EN</span>
+                <button class="lang-switch" type="button" id="langBtn" aria-label="Switch language">EN</button>
                 <a href="https://chromewebstore.google.com/detail/eomfjfhjglppmkefbnhfmmdfciemlfie?utm_source=item-share-cb"
                     class="btn-primary" target="_blank">
                     <span data-i18n="install">免费安装</span>
@@ -991,7 +993,7 @@
     <main class="scrolly-container">
         <div class="text-col">
             <div class="step active" data-index="0">
-                <span class="step-icon">�</span>
+                <span class="step-icon">💬</span>
                 <h2 data-i18n="feature1Title">智能侧边栏对话</h2>
                 <p data-i18n="feature1Desc">无需离开当前页面，随时唤起 AI 助手。支持上下文对话、代码解释、翻译润色等多种任务。</p>
             </div>
@@ -1016,70 +1018,7 @@
         <p>© 2026 Smart Sidebar Assistant. MIT License.</p>
     </footer>
 
-    <script>
-        const i18n = {
-            zh: {
-                title: "智能侧边栏助手", install: "免费安装", heroTitle: "浏览器里的 AI 共驾驶", heroDesc: "集成 Gemini 与 OpenAI。不打断浏览流，一键总结、分析、对话。", apiGuide: "API 指南",
-                feature1Title: "智能侧边栏对话", feature1Desc: "无需离开当前页面，随时唤起 AI 助手。支持上下文对话、代码解释、翻译润色等多种任务。",
-                feature2Title: "多模型自由切换", feature2Desc: "支持 Google Gemini 和 OpenAI 兼容接口。在选项页轻松配置多个 API，根据任务需求灵活切换模型。",
-                feature3Title: "对话存档与回溯", feature3Desc: "话题结束了？一键“分割”并存档当前对话。随时在历史记录中回溯过往知识。",
-                langBtn: "EN"
-            },
-            en: {
-                title: "Smart Sidebar Assistant", install: "Install Free", heroTitle: "Your Browser AI Co-pilot", heroDesc: "Integrate Gemini & OpenAI. Summarize, analyze, and chat without breaking your flow.", apiGuide: "API Guide",
-                feature1Title: "Smart Sidebar Chat", feature1Desc: "Chat with AI without leaving your current page. Supports context-aware conversations, code explanation, translation, and more.",
-                feature2Title: "Multi-Model Support", feature2Desc: "Switch between Google Gemini and OpenAI compatible APIs. Configure multiple models in options and switch instantly.",
-                feature3Title: "Conversation Archive", feature3Desc: "Finished a topic? Split and archive the chat. Access your knowledge history anytime.",
-                langBtn: "中"
-            }
-        };
-
-        let currentLang = 'zh';
-        const steps = document.querySelectorAll('.step');
-        const featureImg = document.getElementById('feature-img');
-        const images = {
-            zh: ['ZH_MAIN.jpg', 'ZH-OP.jpg', 'ZH_AR.jpg'],
-            en: ['EN-MAIN.jpg', 'EN-OP.jpg', 'EN-AR.jpg']
-        };
-
-        // 滚动交互
-        const observer = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    steps.forEach(s => s.classList.remove('active'));
-                    entry.target.classList.add('active');
-
-                    const index = entry.target.getAttribute('data-index');
-                    if (featureImg && images[currentLang]) {
-                        featureImg.src = images[currentLang][index];
-                        featureImg.style.opacity = 0;
-                        setTimeout(() => featureImg.style.opacity = 1, 50);
-                    }
-                }
-            });
-        }, { threshold: 0.6 });
-
-        steps.forEach(step => observer.observe(step));
-
-        // 语言切换
-        window.switchLang = () => {
-            currentLang = currentLang === 'zh' ? 'en' : 'zh';
-            const data = i18n[currentLang];
-
-            // 更新静态文本
-            document.querySelectorAll('[data-i18n]').forEach(el => {
-                const key = el.getAttribute('data-i18n');
-                if (data[key]) el.innerText = data[key];
-            });
-
-            // 更新当前图片
-            const activeStep = document.querySelector('.step.active');
-            if (activeStep) {
-                const index = activeStep.getAttribute('data-index');
-                featureImg.src = images[currentLang][index];
-            }
-        };
-    </script>
+    <script src="index.js"></script>
 </body>
 
 </html>

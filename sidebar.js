@@ -165,6 +165,9 @@ const translations = {
         responseTooLarge: 'API 响应超过安全大小上限，已停止接收。',
         streamIncomplete: 'API 流式响应未正常结束，未保存不完整回答。',
         storageError: '本地对话存储失败',
+        copyMessage: '复制消息',
+        archiveMessage: '存档问答',
+        archivedLabel: '已存档',
         describeImage: "请描述这张图片。",
         viewArchivedBtnCount: "查看已存档对话",
         characters: "字符",
@@ -270,6 +273,9 @@ const translations = {
         responseTooLarge: 'The API response exceeded the safe size limit and was stopped.',
         streamIncomplete: 'The API stream ended unexpectedly, so the partial answer was not saved.',
         storageError: 'Local conversation storage failed',
+        copyMessage: 'Copy message',
+        archiveMessage: 'Archive Q&A',
+        archivedLabel: 'Archived',
         describeImage: "Please describe this image.",
         viewArchivedBtnCount: "Archived Chats",
         characters: "characters",
@@ -762,6 +768,7 @@ async function initialize() {
 }
 
 function updateInterfaceLanguage() {
+    document.documentElement?.setAttribute('lang', currentLanguage === 'zh' ? 'zh-CN' : 'en');
     const elements = document.querySelectorAll('[data-i18n]');
     elements.forEach(el => {
         const key = el.getAttribute('data-i18n');
@@ -2442,10 +2449,12 @@ function renderCurrentChat() {
         actionsContainer.classList.add('message-actions');
 
         if (!msg.isThinking && !msg.isTempStatus && textContent) {
-            const copyElement = document.createElement('span');
+            const copyElement = document.createElement('button');
+            copyElement.type = 'button';
             copyElement.classList.add('copy-action');
             copyElement.innerHTML = '&#x1F4CB;'; // Clipboard icon 📋
-            copyElement.title = 'Copy';
+            copyElement.title = t('copyMessage');
+            copyElement.setAttribute('aria-label', t('copyMessage'));
             copyElement.onclick = (e) => {
                 e.stopPropagation();
                 navigator.clipboard.writeText(textContent).then(() => {
@@ -2461,10 +2470,12 @@ function renderCurrentChat() {
         }
 
         if (msg.role === 'model' && !msg.isThinking && !msg.isTempStatus && !msg.archived) {
-            const archiveElement = document.createElement('span');
+            const archiveElement = document.createElement('button');
+            archiveElement.type = 'button';
             archiveElement.classList.add('archive-action');
             archiveElement.innerHTML = '&#x1F4C1;'; // Folder icon 📁
-            archiveElement.title = 'Archive';
+            archiveElement.title = t('archiveMessage');
+            archiveElement.setAttribute('aria-label', t('archiveMessage'));
             archiveElement.onclick = (e) => {
                 e.stopPropagation();
                 archiveQaPair(index);
@@ -2473,7 +2484,7 @@ function renderCurrentChat() {
         } else if (msg.archived) {
             const archivedTextSpan = document.createElement('span');
             archivedTextSpan.classList.add('archived-text');
-            archivedTextSpan.textContent = 'Archived';
+            archivedTextSpan.textContent = t('archivedLabel');
             actionsContainer.appendChild(archivedTextSpan);
         }
 

@@ -85,7 +85,7 @@ After installation, proceed to **Step 2** if you want to use AI summaries or cha
 
 ## 🔐 Permissions & Data Flow
 
-- **`activeTab` + `scripting`**: Run the user-requested extractor in the selected tab.
+- **`scripting`**: Run the user-requested extractor in the selected tab; page scope is controlled by the host permission below.
 - **`tabs`**: Resolve the correct tab/window and create, monitor, then close the inactive temporary tab used for link extraction.
 - **`alarms`**: Enforce link-extraction timeouts, wake expired delivery leases/retries, and clean up completed job records even if the service worker sleeps.
 - **`storage`**: Sync API/regex settings, store local chat history, and temporarily retain pending link jobs in `chrome.storage.session` so the sidebar can recover them.

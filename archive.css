@@ -149,6 +149,12 @@ body {
 }
 
 .chat-item {
+    display: block;
+    width: 100%;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    text-align: left;
     position: relative;
     padding: 13px 14px 13px 16px;
     margin-bottom: 8px;

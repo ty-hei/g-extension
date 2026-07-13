@@ -40,7 +40,7 @@ flowchart LR
 | `regex_engine.js` / `regex_worker.js` | 可测试的纯正则逻辑与浏览器 Worker 隔离 |
 | `libs/safe_markdown.js` | 对模型 Markdown 生成的 DOM 做标签、属性和 URL 白名单清洗 |
 
-`popup.html`、`popup.js` 和 `content.js` 当前没有被 `manifest.json` 引用，不属于现行运行链路。
+旧版 popup 与未使用的内容脚本已从发布源中移除；商店包由显式 allowlist 生成，不包含测试、文档站开发文件或系统元数据。
 
 ### 提取契约
 
@@ -88,7 +88,7 @@ claim → 交付失败          → release → retryAfter → 再次可领取
 | 位置 | 数据 | 生命周期与注意事项 |
 | --- | --- | --- |
 | `chrome.storage.sync` | `apiConfigurations`（包含 API Key）、`activeConfigurationId`、`interfaceLanguage`、高级正则设置 | 可由 Chrome 在登录同一账户的浏览器间同步；开发者服务器不参与 |
-| `chrome.storage.local` | `geminiChatHistory`、`geminiArchivedChats`、`promptTemplates` | 保存在当前浏览器配置中；普通聊天最多保留 50 个会话 |
+| `chrome.storage.local` | `gExtensionConversationIndex:v1:*`、`gExtensionConversation:v1:*`、`promptTemplates` | 后台单写者按会话独立保存，避免多窗口整数组覆盖；普通聊天最多 50 个、存档最多 200 个，单会话 512 KiB、每类总预算 7 MiB；首次读取自动迁移旧键 |
 | `chrome.storage.session` | `gExtensionLinkJob:*` 与紧凑索引 | 临时链接任务，用于 Service Worker/侧边栏恢复；完成约 10 分钟后尝试清理，有效 claim/retry 会延期，ack 成功则立即删除 |
 | 内存 | API 串行队列、当前界面状态、已连接侧边栏窗口计数 | 扩展页面或 Service Worker 结束后消失 |
 
@@ -138,7 +138,7 @@ Smart Sidebar Assistant is a build-free Chrome Manifest V3 extension. The backgr
 | `regex_engine.js`, `regex_worker.js` | Pure regex logic and disposable Worker isolation |
 | `libs/safe_markdown.js` | Tag, attribute, and URL allowlist sanitization for rendered model output |
 
-`popup.html`, `popup.js`, and `content.js` are not referenced by the current manifest and are not active runtime entry points.
+The obsolete popup and unused content script were removed. Store packages are generated from an explicit allowlist and exclude tests, documentation-development files, and operating-system metadata.
 
 ### Extraction and user flows
 
@@ -160,7 +160,7 @@ A link action persists a `creating` job and timeout alarm before opening an inac
 | Storage | Contents |
 | --- | --- |
 | `chrome.storage.sync` | API configurations including keys, active configuration, language, and advanced regex settings |
-| `chrome.storage.local` | Chat history, archives, and prompt templates; ordinary chat is capped at 50 sessions |
+| `chrome.storage.local` | Per-conversation indexed chat/archive records and prompt templates; background serialization prevents multi-window lost updates. Ordinary chat is capped at 50 records, archives at 200, each record at 512 KiB, and each store at 7 MiB; legacy array keys migrate on first read |
 | `chrome.storage.session` | Link-job records and compact index for recovery |
 
 Privileged messages use separate side-panel and content-script action allowlists plus sender, frame, tab, and window validation. Link targets must be credential-free HTTP(S) URLs. Page content is untrusted, model Markdown is sanitized, regex work is terminable, and packaged runtime scripts are local. `<all_urls>` grants access but does not itself transmit data.

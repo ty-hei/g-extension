@@ -119,6 +119,8 @@ document.addEventListener('DOMContentLoaded', async function () {
             errorConfigIncomplete: "API配置不完整，请在设置中检查。",
             thinking: "思考中...",
             archiveCount: "{count} 个对话",
+            openArchive: "打开存档对话",
+            copyMessage: "复制消息",
             storageError: "本地对话存储失败"
         },
         en: {
@@ -142,6 +144,8 @@ document.addEventListener('DOMContentLoaded', async function () {
             errorConfigIncomplete: "API configuration incomplete. Please check settings.",
             thinking: "Thinking...",
             archiveCount: "{count} conversations",
+            openArchive: "Open archived conversation",
+            copyMessage: "Copy message",
             storageError: "Local conversation storage failed"
         }
     };
@@ -151,6 +155,7 @@ document.addEventListener('DOMContentLoaded', async function () {
     }
 
     function updateInterfaceLanguage() {
+        document.documentElement?.setAttribute('lang', currentLanguage === 'zh' ? 'zh-CN' : 'en');
         document.querySelectorAll('[data-i18n]').forEach(el => {
             const key = el.getAttribute('data-i18n');
             const translatedText = t(key);
@@ -159,6 +164,7 @@ document.addEventListener('DOMContentLoaded', async function () {
             }
         });
         document.title = t('archiveTitle');
+        archiveSendBtn?.setAttribute('aria-label', currentLanguage === 'zh' ? '发送消息' : 'Send message');
         updateArchiveCount();
     }
 
@@ -259,10 +265,12 @@ document.addEventListener('DOMContentLoaded', async function () {
         sortedArchivedChats.forEach((chat, index) => {
             if (!chat || chat.length === 0) return;
 
-            const chatItem = document.createElement('div');
+            const chatItem = document.createElement('button');
+            chatItem.type = 'button';
             chatItem.classList.add('chat-item');
 
             const titleText = getChatTitle(chat);
+            chatItem.setAttribute('aria-label', `${t('openArchive')}: ${titleText}`);
 
             const titleDiv = document.createElement('div');
             titleDiv.classList.add('chat-item-title');
@@ -664,7 +672,8 @@ document.addEventListener('DOMContentLoaded', async function () {
             const copyBtn = document.createElement('button');
             copyBtn.classList.add('copy-btn');
             copyBtn.innerHTML = '📋'; // Simple icon, can be SVG
-            copyBtn.title = 'Copy';
+            copyBtn.title = t('copyMessage');
+            copyBtn.setAttribute('aria-label', t('copyMessage'));
             copyBtn.onclick = async () => {
                 if (msg.parts && msg.parts[0] && typeof msg.parts[0].text === 'string') {
                     try {

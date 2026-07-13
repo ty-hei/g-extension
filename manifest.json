@@ -5,8 +5,8 @@
   "default_locale": "zh_CN",
   "version": "1.4.0",
   "minimum_chrome_version": "120",
+  "incognito": "not_allowed",
   "permissions": [
-    "activeTab",
     "alarms",
     "scripting",
     "storage",
@@ -15,7 +15,6 @@
     "tabs"
   ],
   "host_permissions": [
-    "https://generativelanguage.googleapis.com/",
     "<all_urls>"
   ],
   "options_page": "options.html",
