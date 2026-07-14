@@ -228,7 +228,7 @@
 
         /* === Hero === */
         .hero {
-            padding: 180px 24px 100px;
+            padding: 150px 24px 72px;
             text-align: center;
             max-width: 1400px;
             margin: 0 auto;
@@ -281,7 +281,7 @@
             display: flex;
             max-width: var(--max-width);
             margin: 0 auto;
-            gap: 80px;
+            gap: 64px;
             position: relative;
             padding: 0 24px;
         }
@@ -294,7 +294,7 @@
 
         /* --- 修复点：优化文字段落的样式 --- */
         .step {
-            min-height: 90vh;
+            min-height: 78vh;
             display: flex;
             flex-direction: column;
             justify-content: center;
@@ -951,6 +951,25 @@
             footer {
                 padding: 40px 16px;
                 font-size: 0.9rem;
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            *,
+            *::before,
+            *::after {
+                scroll-behavior: auto !important;
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+
+            .light-blob,
+            .hero h1,
+            .hero p,
+            .hero-btns {
+                opacity: 1;
+                transform: none;
             }
         }
     </style>

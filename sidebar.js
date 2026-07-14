@@ -102,6 +102,9 @@ const translations = {
         regexToolFlagsInvalid: "正则标志无效。仅支持 d g i m s u v y，且不能重复。",
         close: "关闭",
         promptShortcuts: "Prompt 快捷方式:",
+        emptyChatTitle: "从当前网页开始",
+        emptyChatBody: "总结页面、提取全文，或在下方直接输入问题。",
+        clearAllHistory: "清除所有历史",
         clearImage: "清除图片",
         quoteContent: "引用内容:",
         copyQuote: "复制",
@@ -212,6 +215,9 @@ const translations = {
         regexToolFlagsInvalid: "Invalid regex flags. Only d g i m s u v y are supported, with no duplicates.",
         close: "Close",
         promptShortcuts: "Prompt Shortcuts:",
+        emptyChatTitle: "Start with this page",
+        emptyChatBody: "Summarize the page, extract its text, or ask a question below.",
+        clearAllHistory: "Clear all history",
         clearImage: "Clear Image",
         quoteContent: "Quote:",
         copyQuote: "Copy",
@@ -475,7 +481,7 @@ let chatOutput, chatInput, sendMessageButton, stopRequestButton, summarizePageBu
     selectedImagePreviewContainer, clearSelectedImageButton,
     clearAllHistoryButton,
     splitChatButton, viewArchivedChatsButton,
-    managePromptsButton, promptShortcutsContainer,
+    managePromptsButton, promptShortcutsContainer, promptShortcutsSection,
     toggleMoreActionsButton, moreActionsMenu,
     regexExtractButton, regexToolPanel, closeRegexToolButton,
     regexToolPattern, regexToolFlags, regexToolUseFullText,
@@ -517,6 +523,7 @@ async function initialize() {
     viewArchivedChatsButton = document.getElementById('viewArchivedChatsButton');
     managePromptsButton = document.getElementById('managePromptsButton');
     promptShortcutsContainer = document.getElementById('promptShortcuts');
+    promptShortcutsSection = document.getElementById('promptShortcutsSection');
     toggleMoreActionsButton = document.getElementById('toggleMoreActionsButton');
     moreActionsMenu = document.getElementById('moreActionsMenu');
     regexExtractButton = document.getElementById('regexExtractButton');
@@ -793,7 +800,14 @@ function updateInterfaceLanguage() {
     });
 
     if (chatInput) chatInput.placeholder = t('inputPlaceholder');
-    if (toggleMoreActionsButton) toggleMoreActionsButton.title = t('moreActions');
+    if (toggleMoreActionsButton) {
+        toggleMoreActionsButton.title = t('moreActions');
+        toggleMoreActionsButton.setAttribute('aria-label', t('moreActions'));
+    }
+    if (clearAllHistoryButton) {
+        clearAllHistoryButton.title = t('clearAllHistory');
+        clearAllHistoryButton.setAttribute('aria-label', t('clearAllHistory'));
+    }
     if (regexToolPattern) regexToolPattern.placeholder = t('regexToolPatternLabel');
     if (regexToolFlags) regexToolFlags.placeholder = 'gim';
     updateSendShortcutHint();
@@ -1131,6 +1145,10 @@ function renderPromptShortcuts() {
         if (!a.isPreset && b.isPreset) return 1;
         return a.name.localeCompare(b.name);
     });
+
+    if (promptShortcutsSection) {
+        promptShortcutsSection.hidden = sortedPrompts.length === 0;
+    }
 
     sortedPrompts.forEach(template => {
         const button = document.createElement('button');
@@ -2436,6 +2454,9 @@ function renderCurrentChat() {
     if (setupOnboardingVisible) {
         renderSetupOnboardingCard();
     }
+    if (!setupOnboardingVisible && currentChat.length === 0) {
+        renderChatEmptyState();
+    }
     currentChat.forEach((msg, index) => {
         const messageDiv = document.createElement('div');
         messageDiv.classList.add('message', msg.role === 'user' ? 'user' : 'ai');
@@ -2528,6 +2549,27 @@ function renderCurrentChat() {
     if (chatOutput.scrollHeight > chatOutput.clientHeight) {
         chatOutput.scrollTop = setupOnboardingVisible ? 0 : chatOutput.scrollHeight;
     }
+}
+
+function renderChatEmptyState() {
+    const emptyState = document.createElement('div');
+    emptyState.classList.add('chat-empty-state');
+
+    const icon = document.createElement('span');
+    icon.classList.add('chat-empty-state-icon');
+    icon.setAttribute('aria-hidden', 'true');
+    icon.textContent = '✦';
+
+    const title = document.createElement('strong');
+    title.textContent = t('emptyChatTitle');
+
+    const body = document.createElement('p');
+    body.textContent = t('emptyChatBody');
+
+    emptyState.appendChild(icon);
+    emptyState.appendChild(title);
+    emptyState.appendChild(body);
+    chatOutput.appendChild(emptyState);
 }
 
 function renderSetupOnboardingCard() {

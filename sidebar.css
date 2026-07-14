@@ -205,8 +205,8 @@ body {
    Control Buttons
    ======================================== */
 .controls-primary {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 40px;
   gap: 8px;
 }
 
@@ -234,6 +234,7 @@ body {
   position: relative;
   overflow: hidden;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  min-width: 0;
 }
 
 .controls-primary button:hover,
@@ -467,6 +468,44 @@ button#toggleMoreActionsButton.active {
   -webkit-backdrop-filter: blur(10px);
   box-shadow: var(--glass-shadow);
   min-height: 200px;
+}
+
+.chat-empty-state {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 24px 12px;
+  box-sizing: border-box;
+  color: var(--secondary-text-color);
+  text-align: center;
+}
+
+.chat-empty-state-icon {
+  width: 48px;
+  height: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 16px;
+  background: rgba(102, 126, 234, 0.14);
+  color: var(--link-color);
+  font-size: 1.45rem;
+}
+
+.chat-empty-state strong {
+  color: var(--primary-text-color);
+  font-size: 1rem;
+}
+
+.chat-empty-state p {
+  max-width: 290px;
+  margin: 0;
+  color: var(--light-text-color);
+  font-size: 0.88rem;
+  line-height: 1.55;
 }
 
 .setup-onboarding-card {
@@ -759,6 +798,7 @@ button#toggleMoreActionsButton.active {
   box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
   position: relative;
   overflow: hidden;
+  min-width: 0;
 }
 
 #sendMessageButton:hover {
@@ -809,6 +849,52 @@ button#toggleMoreActionsButton.active {
   border-color: transparent;
   transform: scale(1.05);
   box-shadow: 0 4px 12px var(--destructive-button-hover-glow);
+}
+
+button:focus-visible,
+.prompt-shortcut-button:focus-visible,
+a:focus-visible {
+  outline: 3px solid rgba(102, 126, 234, 0.55);
+  outline-offset: 2px;
+}
+
+@media (max-width: 380px) {
+  .sidebar-container {
+    padding: 10px;
+    gap: 8px;
+  }
+
+  .controls-primary {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 36px;
+    gap: 6px;
+  }
+
+  button#toggleMoreActionsButton {
+    width: 36px;
+  }
+
+  .send-area-container {
+    gap: 6px;
+  }
+
+  .shortcut-hint {
+    display: none;
+  }
+
+  #clearAllHistoryButton {
+    padding: 10px 11px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 /* ========================================

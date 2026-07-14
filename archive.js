@@ -129,7 +129,8 @@ document.addEventListener('DOMContentLoaded', async function () {
             openArchive: "打开存档对话",
             copyMessage: "复制消息",
             storageError: "本地对话存储失败",
-            requestCancelled: "已取消本次 API 请求。"
+            requestCancelled: "已取消本次 API 请求。",
+            inputPlaceholder: "输入消息..."
         },
         en: {
             archiveTitle: "Archived Chats",
@@ -155,7 +156,8 @@ document.addEventListener('DOMContentLoaded', async function () {
             openArchive: "Open archived conversation",
             copyMessage: "Copy message",
             storageError: "Local conversation storage failed",
-            requestCancelled: "The API request was cancelled."
+            requestCancelled: "The API request was cancelled.",
+            inputPlaceholder: "Type a message..."
         }
     };
 
@@ -175,6 +177,7 @@ document.addEventListener('DOMContentLoaded', async function () {
         document.title = t('archiveTitle');
         archiveSendBtn?.setAttribute('aria-label', currentLanguage === 'zh' ? '发送消息' : 'Send message');
         archiveStopBtn?.setAttribute('aria-label', currentLanguage === 'zh' ? '停止请求' : 'Stop request');
+        if (archiveChatInput) archiveChatInput.placeholder = t('inputPlaceholder');
         updateArchiveCount();
     }
 
@@ -259,6 +262,9 @@ document.addEventListener('DOMContentLoaded', async function () {
         if (!archivedChatsListDiv) return;
         archivedChatsListDiv.innerHTML = '';
         updateArchiveCount();
+        if (clearAllArchivedButton) {
+            clearAllArchivedButton.disabled = archivedChats.length === 0;
+        }
 
         if (archivedChats.length === 0) {
             archivedChatsListDiv.innerHTML = `<div class="empty-list">${t('noArchives')}</div>`;

@@ -20,11 +20,11 @@
       <input type="hidden" id="promptId">
       <div>
         <label for="promptName" data-i18n="promptNameLabel">模板名称:</label>
-        <input type="text" id="promptName" placeholder="例如：翻译成英文">
+        <input type="text" id="promptName" placeholder="例如：翻译成英文" autocomplete="off">
       </div>
       <div>
         <label for="promptContent" data-i18n="promptContentLabel">模板内容 (使用 <code>{{text}}</code> 作为选中文本的占位符):</label>
-        <textarea id="promptContent" rows="5" placeholder="例如：请将以下文本翻译成英文：\n\n{{text}}"></textarea>
+        <textarea id="promptContent" rows="5" placeholder="例如：请将以下文本翻译成英文：&#10;&#10;{{text}}"></textarea>
       </div>
       <div class="form-actions">
         <button id="savePromptButton" data-i18n="savePrompt">保存模板</button>
