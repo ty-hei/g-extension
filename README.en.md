@@ -122,7 +122,10 @@ See [Development and Testing](./docs/development.md#english) for the test layers
 - **Unified extraction**: Readability summaries now share a structured extraction pipeline with multiline block-boundary preservation, visible-text fallback, source metadata, hard size limits, and explicit truncation warnings.
 - **Local full-text and regex tools**: Full visible text extraction no longer requires an API configuration. Regex previews run locally in a disposable Worker with a one-second timeout and bounded output.
 - **Resilient link jobs**: Link summaries use inactive temporary tabs, window-scoped request IDs, session-backed claim/ack recovery, a limit of three concurrent extractions, a 30-second extraction timeout, and roughly 10-minute terminal-result retention. Successful AI delivery acknowledges and removes the corresponding job.
+- **Reliable local conversations**: Chat and archive history now use independently indexed conversation records serialized through the background worker, preventing multi-window overwrites. Legacy array storage migrates automatically under explicit count and capacity limits.
+- **Protected request lifecycles**: Side-panel and archive requests support user cancellation, total and stream-idle timeouts, response-size limits, and incomplete-stream rollback so failed output is not stored as a complete answer.
 - **Privacy and safety**: Text selection is captured only while a sidebar is connected in that browser window, and model Markdown is rendered through an HTML allowlist sanitizer.
+- **UI and accessibility**: Improved narrow side-panel layouts, first-run and empty states, archive and Prompt copy, keyboard focus, dark mode, and reduced-motion behavior.
 - **Platform baseline**: Raised the minimum supported browser version to Chrome 120 and documented each requested permission.
 
 #### v1.3.2
