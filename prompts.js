@@ -19,7 +19,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       promptNameLabel: "模板名称:",
       promptNamePlaceholder: "例如：翻译成英文",
       promptContentLabel: "模板内容 (使用 {{text}} 作为选中文本的占位符):",
-      promptContentPlaceholder: "例如：请将以下文本翻译成英文：\\n\\n{{text}}",
+      promptContentPlaceholder: "例如：请将以下文本翻译成英文：\n\n{{text}}",
       savePrompt: "保存模板",
       clearForm: "清空表单",
       usageNoteTitle: "使用说明:",
@@ -44,7 +44,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       promptNameLabel: "Template Name:",
       promptNamePlaceholder: "E.g. Translate to English",
       promptContentLabel: "Content (Use {{text}} as placeholder):",
-      promptContentPlaceholder: "E.g. Please translate the following to English:\\n\\n{{text}}",
+      promptContentPlaceholder: "E.g. Please translate the following to English:\n\n{{text}}",
       savePrompt: "Save Template",
       clearForm: "Clear Form",
       usageNoteTitle: "Usage:",
@@ -69,6 +69,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   function updateInterfaceLanguage() {
+    document.documentElement?.setAttribute('lang', currentLanguage === 'zh' ? 'zh-CN' : 'en');
     document.querySelectorAll('[data-i18n]').forEach(el => {
         const key = el.getAttribute('data-i18n');
         if (translations[currentLanguage][key]) {
@@ -112,40 +113,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Define presets based on CURRENT language.
     const presetsDefinition = getPresetPrompts();
 
-    let madeChangesToStoredStructure = false;
-
-    // 1. Update existing presets to match current language definitions
-    prompts.forEach(p => {
-        if (p.isPreset) {
-            const freshDef = presetsDefinition.find(def => def.id === p.id);
-            if (freshDef) {
-                // Overwrite name and content to ensure language switch takes effect for presets
-                if (p.name !== freshDef.name || p.content !== freshDef.content) {
-                    p.name = freshDef.name;
-                    p.content = freshDef.content;
-                    madeChangesToStoredStructure = true;
-                }
-            }
-        }
-    });
-
-    // 2. Add any missing presets
-    presetsDefinition.forEach(definedPreset => {
-        const existingPromptIndex = prompts.findIndex(p => p.id === definedPreset.id);
-        if (existingPromptIndex === -1) {
-            prompts.unshift({ ...definedPreset });
-            madeChangesToStoredStructure = true;
-        }
-    });
-
-    // 3. Fix any flags (ensure custom prompts are not flagged as presets)
-    prompts.forEach(p => {
-        const isActuallyPreset = presetsDefinition.some(dp => dp.id === p.id);
-        if (!isActuallyPreset && p.isPreset !== false) {
-            p.isPreset = false;
-            madeChangesToStoredStructure = true;
-        }
-    });
+    const presetIds = new Set(presetsDefinition.map(preset => preset.id));
+    const normalizedPrompts = [
+      ...presetsDefinition.map(preset => ({ ...preset })),
+      ...prompts
+        .filter(prompt => !presetIds.has(prompt.id))
+        .map(prompt => ({ ...prompt, isPreset: false }))
+    ];
+    const madeChangesToStoredStructure =
+      JSON.stringify(prompts) !== JSON.stringify(normalizedPrompts);
+    prompts = normalizedPrompts;
 
     if (!result.promptTemplates || madeChangesToStoredStructure) {
         await savePrompts();

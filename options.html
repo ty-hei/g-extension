@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh-CN">
 
 <head>
   <title data-i18n="optionsTitle">智能侧边栏API设置</title>
@@ -84,7 +84,7 @@
       background: var(--bg-gradient);
       background-attachment: fixed;
       color: var(--text-primary);
-      padding: 40px 20px;
+      padding: 32px 20px;
       min-height: 100vh;
       line-height: 1.6;
       animation: fadeInUp 0.6s ease-out;
@@ -92,7 +92,7 @@
 
     h1 {
       text-align: center;
-      font-size: 2.5em;
+      font-size: 2.25em;
       font-weight: 700;
       margin-bottom: 15px;
       background: var(--primary-gradient);
@@ -119,7 +119,7 @@
       backdrop-filter: blur(10px);
       border: 1px solid var(--glass-border);
       border-radius: var(--radius-lg);
-      padding: 30px;
+      padding: 26px;
       margin-bottom: 30px;
       box-shadow: var(--shadow-md);
       transition: var(--transition);
@@ -264,6 +264,15 @@
 
     button:active {
       transform: translateY(0) scale(0.98);
+    }
+
+    button:focus-visible,
+    input:focus-visible,
+    select:focus-visible,
+    textarea:focus-visible,
+    a:focus-visible {
+      outline: 3px solid rgba(102, 126, 234, 0.55);
+      outline-offset: 2px;
     }
 
     button.delete-btn {
@@ -414,6 +423,17 @@
         grid-row: auto;
       }
     }
+
+    @media (prefers-reduced-motion: reduce) {
+      *,
+      *::before,
+      *::after {
+        scroll-behavior: auto !important;
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
   </style>
 </head>
 
@@ -483,7 +503,7 @@
     </div>
     <div class="form-group">
       <label for="modelName" data-i18n="modelNameLabel">模型名称:</label>
-      <input type="text" id="modelName" placeholder="例如: gemini-2.0-flash 或 gpt-4o">
+      <input type="text" id="modelName" placeholder="例如: gemini-3.5-flash 或 gpt-4o">
     </div>
 
     <button id="saveConfigButton" data-i18n="saveConfig">保存配置</button>
@@ -500,13 +520,15 @@
   </div>
 
   <div style="text-align: center; margin-top: 40px; color: var(--text-light); font-size: 0.9em;">
-    <a href="https://privacy-policy.browser-plugin.heihaheihaha.com/" target="_blank"
+    <a href="privacy_policy/privacy_policy_zh.html" target="_blank" rel="noopener noreferrer"
       style="color: var(--text-light); text-decoration: none; border-bottom: 1px dashed var(--text-light);">Privacy
       Policy / 隐私政策</a>
   </div>
 
   <p id="status"></p>
 
+  <script src="api_config.js"></script>
+  <script src="regex_engine.js"></script>
   <script src="options.js"></script>
 </body>
 

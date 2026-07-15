@@ -1,97 +1,20 @@
-# Smart Sidebar Assistant / 智能侧边栏助手
+# 智能侧边栏助手 / Smart Sidebar Assistant
 
-[![Version](https://img.shields.io/badge/version-1.3.2-blue.svg)](./manifest.json)
+[![Version](https://img.shields.io/badge/version-1.4.0-blue.svg)](./manifest.json)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![Tests](https://github.com/heihaheihaha/g-extension/actions/workflows/test.yml/badge.svg)](https://github.com/heihaheihaha/g-extension/actions/workflows/test.yml)
 
-[English](#english) | [中文](#chinese)
+[中文](#chinese) | [English](./README.en.md) | [项目文档 / Documentation](./docs/README.md)
 
----
+## 📚 项目文档 / Documentation
 
-<a name="english"></a>
-## 🇬🇧 English Introduction
+| 用户文档 | 开发者文档 |
+| --- | --- |
+| [使用指南（含多行正则示例）](./docs/user-guide.md) | [架构说明](./docs/architecture.md) |
+| [故障排查](./docs/troubleshooting.md) | [开发与测试](./docs/development.md) |
+| [中文隐私政策](./privacy_policy/privacy_policy_zh.html) / [Privacy Policy](./privacy_policy/index.html) | [贡献指南](./CONTRIBUTING.md) |
 
-**Smart Sidebar Assistant** seamlessly integrates powerful Large Language Model (LLM) capabilities into your browser sidebar, revolutionizing your web browsing, information retrieval, and content creation experience.
-
-### ✨ Key Features
-
-#### 1. Deep Interaction & AI Chat
-* **Streaming Response**: AI responses are displayed in real-time with a typewriter effect for fluid interaction.
-* **Continuous Conversation**: Engage in continuous chats with configured models (Gemini, GPT-4o, etc.) with context awareness.
-* **Multi-Model Support**: Easily switch between different AI models in the options page.
-* **Robust Error Handling**: Friendly error messages for invalid API keys, network issues, or quota limits.
-
-#### 2. Powerful Content Processing
-* **One-Click Summarization**: Instantly summarize the current webpage's core content using [Mozilla's Readability.js](https://github.com/mozilla/readability).
-* **Link Analysis**: Drag and drop links to the preview window (bottom right) or use the context menu to summarize linked content without opening new tabs.
-* **Image Analysis**: Analyze images on webpages using Gemini's multimodal capabilities via the context menu.
-* **Full Text Extraction**: Extract and quote the full text of a webpage for further questioning.
-* **Advanced Regex Extraction**: Enable the sidebar regex extraction tool in Options to preview webpage text, tune JavaScript regular expressions, and copy matched content directly to the clipboard.
-
-#### 3. Efficient Workflow
-* **Prompt Templates**: Manage custom prompt templates. Use the `{{text}}` placeholder to automatically fill in selected text.
-* **Seamless Selection**: Select text on any webpage to automatically quote it in the sidebar for immediate processing.
-* **Chat Management**: Split conversations to archive current context and start fresh. Manage and view archived chats anytime in the refreshed archive workspace.
-* **User Experience**: Auto-clearing of quoted text after prompt application, and auto-generated configuration names.
-
-#### 4. Customization & Internationalization
-* **I18n Support**: Switch between **English** and **Chinese** interfaces.
-* **Dark Mode**: Fully supports system-wide Dark Mode for comfortable night-time usage.
-* **Flexible API Config**: Support for Google Gemini and OpenAI-compatible APIs (custom endpoints allowed).
-* **Connection Testing**: Test your API configuration connectivity directly in the settings page.
-
-### 🚀 Installation
-
-#### Method 1: Install from Chrome Web Store (Recommended)
-
-[**👉 Click here to install from the Chrome Web Store**](https://chromewebstore.google.com/detail/eomfjfhjglppmkefbnhfmmdfciemlfie?utm_source=item-share-cb)
-
----
-#### Method 2: Load from Source (for Developers)
-
-1.  Clone or download this repository.
-2.  Open Chrome/Edge Extensions page (`chrome://extensions`).
-3.  Enable **Developer mode**.
-4.  Click **Load unpacked** and select the project directory.
-5.  Right-click the extension icon, select **Options**, and configure your API Key.
-
----
-
-### 📝 Changelog
-
-#### v1.3.2 (Current)
-* **🧭 Setup Onboarding Fixes**:
-    * Added a clearer first-run onboarding card when no API configuration exists, guiding users directly to the Options page.
-    * Improved handling for incomplete API configurations so missing API keys, endpoints, or model names are explained in the sidebar before chat actions run.
-* **💬 Chat Input Improvements**:
-    * The chat input now auto-resizes while typing, making longer prompts easier to compose.
-    * Refined the chat input placeholder for both English and Chinese interfaces.
-
-#### v1.3.1
-* **🧰 Advanced Extraction Tools**:
-    * Added an optional sidebar Regex Extract Tool. Enable it in Options, preview page content, adjust a JavaScript regex, ask AI to design a regex from the tool, and copy matches to the clipboard.
-    * Kept “Extract Full Text” focused on quoting page text for chat, so regex extraction is a separate advanced workflow.
-* **🗂 Archive Refresh**:
-    * Redesigned the archive page with a cleaner two-pane workspace, archive count, polished message cards, and improved dark mode.
-* **🚀 Experience Upgrades**:
-    * **Smoother Streaming**: Fixed the jitter issue during AI responses for a silky-smooth reading experience.
-    * **Smart Auto-Scroll**: The chat window now intelligently scrolls with AI output but pauses automatically when you scroll up to read history.
-* **🔗 Enhanced Link Summarization**:
-    * **Drag & Drop Preview**: Restored the link drag-and-drop preview! Drag any link to the floating window in the bottom-right to summarize it and auto-open the sidebar.
-    * **Context Menu**: Added "Summarize Link" to the context menu for easier access.
-* **📝 Detail Improvements**:
-    * Page summary requests now include the page title and URL in the chat history for better context.
-
-#### v1.3.0
-* **🌍 Internationalization**: Added full support for English and Chinese languages. Users can switch languages in the Options page.
-* **🌙 Dark Mode**: The interface now automatically adapts to the system's dark/light color scheme.
-* **🔌 Connection Test**: Added a "Test Connection" button in the API configuration page to verify settings before saving.
-* **✨ UX Improvements**:
-    * Automatically clear the quoted text preview after applying a prompt shortcut.
-    * Auto-generate a configuration name (timestamped) if left empty during setup.
-    * Preset prompts (Translate/Summarize) now adapt to the selected interface language.
-
-#### v1.2.1
-* Initial public release features (Page summary, Link Drag-and-Drop, Chat archiving).
+详细文档均提供中英文入口。只需快速体验时，可直接阅读下方功能与安装说明。
 
 ---
 
@@ -109,25 +32,27 @@
 * **智能错误提示**: 清晰友好的错误提示，帮助快速定位网络或 Key 问题。
 
 #### 2. 强大的内容处理
-* **一键网页总结**: 基于 [Mozilla's Readability.js](https://github.com/mozilla/readability) 算法，精准提取并总结网页核心内容。
-* **链接深度解析**: 拖拽链接至右下角预览窗口，或通过右键菜单，直接总结链接指向的内容。
-* **图片识别与分析**: 利用 Gemini 多模态能力分析网页图片。
-* **网页全文引用**: 一键提取全文作为引用，方便基于全文提问。
-* **高级正则提取**: 可在选项页启用侧边栏正则提取工具，预览网页文本、即时调整 JavaScript 正则表达式，并将匹配结果复制到剪贴板。
+* **一键网页总结**: 使用 [Mozilla's Readability.js](https://github.com/mozilla/readability) 提取当前页面正文，将段落、块元素和 `<br>` 边界保留为多行纯文本后发送至您配置的 AI 服务；若正文提取不可用，则回退到页面完整可见文本。
+* **链接深度解析**: 拖拽链接至右下角预览窗口，或通过右键菜单发起任务。插件会打开一个非活动的临时后台标签页，使用 Readability 提取正文（失败时回退到可见文本），并在完成或超时后关闭标签页。最多同时运行 3 个链接提取任务；超出的请求会显示错误，不会继续打开标签页。
+* **图片识别与分析**: 通过右键菜单选择网页图片；当前模型与 Endpoint 支持多模态图片输入时即可提交分析。
+* **网页可见全文引用**: 读取当前页面的可见 `body.innerText` 并在侧边栏中作为本地引用。此操作无需 API 配置；只有在您后续主动发送给 AI 时，文本才会离开本地浏览器。
+* **高级正则提取**: 可预览 Readability 正文或完整可见文本，并在本地 Web Worker 中执行 JavaScript 正则，包括多行 `m` 与 dot-all `s` 模式。1 秒超时和结果上限可避免异常表达式卡死侧边栏。
 
 #### 3. 高效工作流
 * **Prompt 模板**: 自定义快捷指令。支持 `{{text}}` 占位符，自动填充网页选中文本。
-* **无缝选文处理**: 网页选中文本自动进入侧边栏引用区域。
+* **无缝选文处理**: 仅当当前浏览器窗口的侧边栏已打开时，网页选中文本才会进入引用区域；侧边栏关闭后不会捕获选区。
 * **对话管理**: 支持分割对话、对话存档与历史回溯，并提供更清爽的存档工作区。
 * **体验优化**: 应用快捷指令后自动清除引用文本，配置名称支持自动生成。
 
 #### 4. 高度可定制化
 * **多语言支持**: 支持 **中文** 和 **英文** 界面切换。
 * **夜间模式**: 完美支持系统级深色模式 (Dark Mode)。
-* **灵活 API 配置**: 支持 Google Gemini 及任何 OpenAI 兼容接口（可自定义 Endpoint）。
+* **灵活 API 配置**: 支持 Google Gemini，以及符合当前请求体和流式 SSE 响应格式的 OpenAI Chat Completions 兼容 Endpoint。
 * **连接测试**: 配置页面新增“测试连接”功能，确保 API 设置正确。
 
 ### 🚀 安装与配置
+
+**系统要求：** Chrome 120 或更高版本。v1.4.0 以该版本作为 Manifest V3 侧边栏、会话存储、定时任务和 Web Worker 工作流的最低支持基线。
 
 #### 方法一：从 Chrome 网上应用店安装（推荐）
 
@@ -137,16 +62,43 @@
 #### 方法二：源码加载（适合开发者）
 
 1.  下载或克隆本项目。
-2.  打开浏览器扩展管理页面 (`chrome://extensions`)。
+2.  使用 Chrome 120+ 打开扩展管理页面 (`chrome://extensions`)。
 3.  开启 **“开发者模式”**。
 4.  点击 **“加载已解压的扩展程序”**，选择项目文件夹。
-5.  右键点击扩展图标，选择 **“选项”** 配置 API Key。
+5.  右键点击扩展图标，选择 **“选项”**，为总结和聊天配置 API Key。本地可见全文与正则提取无需 API 配置。
+
+完整操作路径、API 字段说明与多行正则示例见[使用指南](./docs/user-guide.md)；如果页面无法注入、链接超时或 API 流格式不兼容，请查阅[故障排查](./docs/troubleshooting.md)。
+
+---
+
+### 🔐 权限与数据流说明
+
+* **`scripting`**：在用户指定的标签页中按需运行提取器；页面访问范围由下述主机权限控制。
+* **`tabs`**：定位正确的窗口/标签页，并创建、监控和关闭用于链接提取的非活动临时标签页。
+* **`alarms`**：即使后台 Service Worker 休眠，也能执行链接提取超时、领取租约/重试唤醒和任务记录清理。
+* **`storage`**：同步 API/正则设置、在本地保存聊天记录，并使用 `chrome.storage.session` 临时保存待处理链接任务，以便侧边栏恢复领取。
+* **`contextMenus` + `sidePanel`**：提供链接/图片右键操作和侧边栏界面；链接总结可在发起操作的窗口中打开侧边栏，图片分析需先打开对应窗口的侧边栏。
+* **`<all_urls>` 主机权限**：支持在用户选择的任意网页上进行提取及可选的选区/链接操作，也支持用户自定义的 OpenAI 兼容 Endpoint。获得主机权限本身不会自动向外发送网页内容。
+* 页面提取和正则匹配在浏览器本地进行；页面/链接总结和聊天内容会由浏览器直接发送到您配置的 AI Endpoint，不经过开发者运营的服务器。
+* **资源上限**：每个提取文本字段最多保留 200,000 字符；发送给 AI 的文本会在 120,000 个源字符后截断；普通聊天请求最多携带最近 40,000 字符的历史上下文；下载处理的图片上限为 10 MiB。正则预览最多返回 1,000 个匹配和 100,000 个结果字符。链接任务会话数据使用 7 MiB 内部预算，并在打开标签页前预留结果空间；侧边栏与存档页的流式 AI 响应上限为 2 MiB/200,000 字符，总时限 2 分钟，连续 30 秒无流数据时会终止，并可由用户主动停止。
+* **链接边界**：链接总结只接受无凭据的 HTTP(S) 公网目标；localhost、单标签内网名、私有/链路本地 IP 与常见内网域名后缀会在打开临时标签页前拒绝。
+* **摘要隔离与恢复**：页面/链接摘要请求不会携带既有聊天历史，并附带将网页内容视为不可信数据的安全指令。链接终态结果完成约 10 分钟后会尝试清理；有效的领取或重试等待会推迟清理。AI 成功返回非空响应后，侧边栏会立即确认并删除任务；AI 发送失败时会释放领取状态以便稍后重试。
 
 ---
 
 ### 📝 更新日志 (Changelog)
 
-#### v1.3.2 (Current)
+#### v1.4.0 (Current)
+* **统一提取管线**：Readability 摘要与可见文本回退采用统一结构化结果，保留正文块边界的多行结构，并包含来源元数据、硬性大小上限和明确的截断提示。
+* **本地全文与正则工具**：可见全文提取不再要求 API 配置；正则预览在一次性 Worker 中本地运行，具有 1 秒超时和输出上限。
+* **可靠的链接任务**：链接总结使用非活动临时标签页、窗口级请求 ID、会话级领取/确认恢复协议、最多 3 个并发提取、30 秒提取超时与约 10 分钟终态保留；AI 成功返回后会确认并删除对应任务。
+* **可靠的本地对话**：聊天与存档改为后台串行写入的独立会话记录，避免多窗口互相覆盖；旧版整数组存储会自动迁移，并采用明确的数量与容量上限。
+* **请求生命周期保护**：侧边栏与存档对话支持主动停止、总超时、流空闲超时、响应大小限制和不完整流回滚，失败请求不会被误存为完整回答。
+* **隐私与安全**：仅在对应窗口侧边栏已连接时捕获选区；模型 Markdown 通过 HTML allowlist 清洗后再渲染。
+* **界面与无障碍**：优化侧栏窄宽布局、首次使用和空状态、存档与 Prompt 文案，并补充键盘焦点、深色模式和减少动画支持。
+* **平台基线**：最低支持版本提升至 Chrome 120，并补充各项权限用途说明。
+
+#### v1.3.2
 * **🧭 配置引导修复**:
     * 新增更清晰的首次使用引导卡片，在尚未创建 API 配置时可直接进入选项页完成设置。
     * 优化不完整 API 配置的处理逻辑，在聊天操作执行前提示缺少的 API Key、Endpoint 或模型名称。
@@ -167,7 +119,7 @@
     * **拖拽预览回归**: 重新上线了链接拖拽预览功能！拖动任意链接到右下角悬浮窗，即可快速总结，并自动打开侧边栏。
     * **右键菜单**: 新增“总结链接网页”右键菜单项，操作更便捷。
 * **📝 细节优化**:
-    * 网页总结请求现在会在历史记录中包含页面标题和 URL，方便回溯。
+    * 网页总结会在本地聊天记录中展示页面标题和 URL，方便回溯；这些显示信息不会进入 API 历史。
 
 #### v1.3.0
 * **🌍 国际化支持**: 全面支持中英文界面切换，可在选项页进行设置。
@@ -185,7 +137,19 @@
 
 ## 🔧 技术栈 / Tech Stack
 * HTML, CSS, JavaScript (ES6+)
-* Chrome Extension Manifest V3
-* Side Panel API, Context Menus API, Storage API
+* Chrome Extension Manifest V3 (Chrome 120+)
+* Side Panel API, Context Menus API, Storage API, Alarms API, Web Workers
 * [Mozilla/Readability.js](https://github.com/mozilla/readability)
 * [Marked.js](https://marked.js.org/)
+
+### 自动化测试
+
+项目使用 Node.js 内置测试运行器，无需安装第三方依赖。开发环境、测试分层、CI 行为和新增用例约定见[开发与测试](./docs/development.md)：
+
+```bash
+npm test
+npm run test:coverage
+npm run test:browser
+```
+
+`test:browser` 需要本机安装 Chrome 或 Chromium。测试覆盖提取契约、正则 Worker、链接任务生命周期与恢复、流式 API 解析、聊天队列与历史预算、存档持久化、Markdown 清洗、内容脚本边界，以及扩展包资源完整性。

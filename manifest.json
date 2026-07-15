@@ -3,9 +3,11 @@
   "name": "__MSG_appName__",
   "description": "__MSG_appDesc__",
   "default_locale": "zh_CN",
-  "version": "1.3.2",
+  "version": "1.4.0",
+  "minimum_chrome_version": "120",
+  "incognito": "not_allowed",
   "permissions": [
-    "activeTab",
+    "alarms",
     "scripting",
     "storage",
     "contextMenus",
@@ -13,7 +15,6 @@
     "tabs"
   ],
   "host_permissions": [
-    "https://generativelanguage.googleapis.com/",
     "<all_urls>"
   ],
   "options_page": "options.html",
@@ -33,30 +34,6 @@
       ],
       "js": [
         "content_script.js"
-      ]
-    }
-  ],
-  "web_accessible_resources": [
-    {
-      "resources": [
-        "sidebar.html",
-        "sidebar.css",
-        "sidebar.js",
-        "archive.html",
-        "archive.js",
-        "archive.css",
-        "options.html",
-        "options.js",
-        "prompts.html",
-        "prompts.js",
-        "prompts.css",
-        "page_content_extractor.js",
-        "regex_content_extractor.js",
-        "libs/*",
-        "images/*"
-      ],
-      "matches": [
-        "<all_urls>"
       ]
     }
   ],

@@ -1,0 +1,11 @@
+{
+  "name": "g-extension",
+  "version": "1.4.0",
+  "private": true,
+  "scripts": {
+    "test": "node --test",
+    "test:browser": "node tests/run_browser_smoke.js",
+    "test:coverage": "node --experimental-test-coverage --test",
+    "package": "node scripts/package_extension.js"
+  }
+}

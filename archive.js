@@ -5,11 +5,20 @@ document.addEventListener('DOMContentLoaded', async function () {
     let currentApiKey = '';
     let currentApiType = 'gemini';
     let currentApiEndpoint = '';
-    let currentModelName = 'gemini-1.5-flash';
+    let currentModelName = globalThis.GExtensionApi?.DEFAULT_GEMINI_MODEL || 'gemini-3.5-flash';
     let activeChat = null; // Track active chat for sending messages
+    let activeChatIdentity = null;
+    let isArchiveRequestInFlight = false;
+    let activeArchiveRequestController = null;
+    let archiveRequestCancelled = false;
     let streamingArchiveMessageElement = null; // Track the DOM element being streamed to
     let isArchiveUserScrolling = false; // Track if user has manually scrolled
     let archiveScrollCheckTimeout = null; // Debounce scroll detection
+    const MAX_ARCHIVE_HISTORY_CHARS = 40000;
+    const ARCHIVE_API_TIMEOUT_MS = 2 * 60 * 1000;
+    const ARCHIVE_STREAM_IDLE_TIMEOUT_MS = 30 * 1000;
+    const MAX_ARCHIVE_RESPONSE_BYTES = 2 * 1024 * 1024;
+    const MAX_ARCHIVE_RESPONSE_CHARS = 200000;
 
     // --- API Initialization ---
     async function initializeApi() {
@@ -37,6 +46,15 @@ document.addEventListener('DOMContentLoaded', async function () {
         }
     }
 
+    function snapshotCurrentApiConfig() {
+        return GExtensionApi.snapshotConfiguration({
+            apiKey: currentApiKey,
+            apiType: currentApiType,
+            apiEndpoint: currentApiEndpoint,
+            modelName: currentModelName
+        }, { allowLoopbackHttp: true });
+    }
+
     // --- DOM Elements ---
     const chatListContainer = document.getElementById('chat-list');
     const archivedChatsListDiv = chatListContainer; // Alias for compatibility
@@ -45,6 +63,7 @@ document.addEventListener('DOMContentLoaded', async function () {
     const archiveInputContainer = document.getElementById('archive-input-container');
     const archiveChatInput = document.getElementById('archive-chat-input');
     const archiveSendBtn = document.getElementById('archive-send-btn');
+    const archiveStopBtn = document.getElementById('archive-stop-btn');
     const archiveCount = document.getElementById('archive-count');
 
     // Detect when user manually scrolls in archive
@@ -67,6 +86,10 @@ document.addEventListener('DOMContentLoaded', async function () {
     if (archiveSendBtn) {
         archiveSendBtn.addEventListener('click', handleSendMessage);
     }
+    archiveStopBtn?.addEventListener('click', () => {
+        archiveRequestCancelled = true;
+        activeArchiveRequestController?.abort();
+    });
     if (archiveChatInput) {
         archiveChatInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
@@ -102,7 +125,12 @@ document.addEventListener('DOMContentLoaded', async function () {
             chatRestored: "对话已恢复到历史记录。请打开侧边栏继续聊天。",
             errorConfigIncomplete: "API配置不完整，请在设置中检查。",
             thinking: "思考中...",
-            archiveCount: "{count} 个对话"
+            archiveCount: "{count} 个对话",
+            openArchive: "打开存档对话",
+            copyMessage: "复制消息",
+            storageError: "本地对话存储失败",
+            requestCancelled: "已取消本次 API 请求。",
+            inputPlaceholder: "输入消息..."
         },
         en: {
             archiveTitle: "Archived Chats",
@@ -124,7 +152,12 @@ document.addEventListener('DOMContentLoaded', async function () {
             chatRestored: "Chat restored to history. Open sidebar to continue.",
             errorConfigIncomplete: "API configuration incomplete. Please check settings.",
             thinking: "Thinking...",
-            archiveCount: "{count} conversations"
+            archiveCount: "{count} conversations",
+            openArchive: "Open archived conversation",
+            copyMessage: "Copy message",
+            storageError: "Local conversation storage failed",
+            requestCancelled: "The API request was cancelled.",
+            inputPlaceholder: "Type a message..."
         }
     };
 
@@ -133,6 +166,7 @@ document.addEventListener('DOMContentLoaded', async function () {
     }
 
     function updateInterfaceLanguage() {
+        document.documentElement?.setAttribute('lang', currentLanguage === 'zh' ? 'zh-CN' : 'en');
         document.querySelectorAll('[data-i18n]').forEach(el => {
             const key = el.getAttribute('data-i18n');
             const translatedText = t(key);
@@ -141,6 +175,9 @@ document.addEventListener('DOMContentLoaded', async function () {
             }
         });
         document.title = t('archiveTitle');
+        archiveSendBtn?.setAttribute('aria-label', currentLanguage === 'zh' ? '发送消息' : 'Send message');
+        archiveStopBtn?.setAttribute('aria-label', currentLanguage === 'zh' ? '停止请求' : 'Stop request');
+        if (archiveChatInput) archiveChatInput.placeholder = t('inputPlaceholder');
         updateArchiveCount();
     }
 
@@ -185,10 +222,49 @@ document.addEventListener('DOMContentLoaded', async function () {
         return titleText;
     }
 
+    function getChatIdentity(chat) {
+        const firstMessage = Array.isArray(chat) ? chat[0] : null;
+        if (!firstMessage) return null;
+        if (typeof firstMessage.archiveConversationId !== 'string' || !firstMessage.archiveConversationId) {
+            const randomPart = globalThis.crypto?.randomUUID
+                ? globalThis.crypto.randomUUID()
+                : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+            firstMessage.archiveConversationId = `archive-${randomPart}`;
+        }
+        return firstMessage.archiveConversationId;
+    }
+
+    async function conversationStoreRequest(action, payload = {}) {
+        const response = await chrome.runtime.sendMessage({ action, ...payload });
+        if (!response?.success) throw new Error(response?.error || 'Conversation storage request failed.');
+        return response;
+    }
+
+    function reportStorageError(error) {
+        console.error('Archive: conversation storage failed', error);
+        if (archiveCount) archiveCount.textContent = `${t('storageError')}: ${error.message}`;
+    }
+
+    function persistArchivedChat(chat, identity = getChatIdentity(chat)) {
+        if (!identity || !Array.isArray(chat)) return;
+        const index = archivedChats.findIndex(candidate => getChatIdentity(candidate) === identity);
+        if (index >= 0) archivedChats[index] = chat;
+        activeChat = chat;
+        activeChatIdentity = identity;
+        void conversationStoreRequest('conversationStoreUpsert', {
+            kind: 'archive',
+            id: identity,
+            messages: chat
+        }).catch(reportStorageError);
+    }
+
     function renderArchivedChatsList() {
         if (!archivedChatsListDiv) return;
         archivedChatsListDiv.innerHTML = '';
         updateArchiveCount();
+        if (clearAllArchivedButton) {
+            clearAllArchivedButton.disabled = archivedChats.length === 0;
+        }
 
         if (archivedChats.length === 0) {
             archivedChatsListDiv.innerHTML = `<div class="empty-list">${t('noArchives')}</div>`;
@@ -205,10 +281,12 @@ document.addEventListener('DOMContentLoaded', async function () {
         sortedArchivedChats.forEach((chat, index) => {
             if (!chat || chat.length === 0) return;
 
-            const chatItem = document.createElement('div');
+            const chatItem = document.createElement('button');
+            chatItem.type = 'button';
             chatItem.classList.add('chat-item');
 
             const titleText = getChatTitle(chat);
+            chatItem.setAttribute('aria-label', `${t('openArchive')}: ${titleText}`);
 
             const titleDiv = document.createElement('div');
             titleDiv.classList.add('chat-item-title');
@@ -245,156 +323,259 @@ document.addEventListener('DOMContentLoaded', async function () {
     }
 
     // --- API Logic ---
-    async function callApi(userMessageContent, currentChat) {
-        if (!currentApiKey || !currentModelName) {
+    function removeChatMessage(chat, message) {
+        const index = chat.indexOf(message);
+        if (index >= 0) chat.splice(index, 1);
+    }
+
+    function buildBoundedArchiveHistory(historySnapshot, apiType) {
+        const candidates = historySnapshot.filter(msg =>
+            !msg.isTempStatus && !msg.isThinking && !msg.excludeFromApiHistory
+        );
+        const selected = [];
+        let remaining = MAX_ARCHIVE_HISTORY_CHARS;
+        for (let index = candidates.length - 1; index >= 0 && remaining > 0; index -= 1) {
+            const message = candidates[index];
+            const text = (message.parts || []).map(part => part.text || '').join('\n');
+            const boundedText = text.length > remaining ? text.slice(text.length - remaining) : text;
+            selected.unshift({ role: message.role, text: boundedText });
+            remaining -= boundedText.length;
+        }
+        return selected.map(message => apiType === 'openai'
+            ? { role: message.role === 'model' ? 'assistant' : message.role, content: message.text }
+            : { role: message.role, parts: [{ text: message.text }] }
+        );
+    }
+
+    function archiveTimeoutError() {
+        const error = new Error('API request timed out.');
+        error.name = 'TimeoutError';
+        return error;
+    }
+
+    function archiveStreamError(code, message) {
+        const error = new Error(message);
+        error.code = code;
+        return error;
+    }
+
+    async function readArchiveStreamChunk(reader, controller) {
+        let timeout;
+        try {
+            return await Promise.race([
+                reader.read(),
+                new Promise((_, reject) => {
+                    timeout = setTimeout(() => {
+                        controller.abort();
+                        reject(archiveTimeoutError());
+                    }, ARCHIVE_STREAM_IDLE_TIMEOUT_MS);
+                })
+            ]);
+        } finally {
+            clearTimeout(timeout);
+        }
+    }
+
+    async function consumeArchiveSse(reader, controller, onPayload) {
+        const decoder = new TextDecoder();
+        let buffer = '';
+        let streamComplete = false;
+        let responseBytes = 0;
+        let pendingDataLines = [];
+        const flushDataEvent = force => {
+            if (pendingDataLines.length === 0) return;
+            const dataText = pendingDataLines.join('\n');
+            let payload;
+            try {
+                payload = JSON.parse(dataText);
+            } catch (error) {
+                if (force) {
+                    console.warn('Archive: invalid SSE payload', error);
+                    pendingDataLines = [];
+                }
+                return;
+            }
+            pendingDataLines = [];
+            onPayload(payload);
+        };
+        while (!streamComplete) {
+            const { done, value } = await readArchiveStreamChunk(reader, controller);
+            responseBytes += value?.byteLength || 0;
+            if (responseBytes > MAX_ARCHIVE_RESPONSE_BYTES) {
+                throw archiveStreamError('API_RESPONSE_TOO_LARGE', 'API response exceeded the safe size limit.');
+            }
+            buffer += done ? decoder.decode() : decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = done ? '' : lines.pop();
+            for (const rawLine of lines) {
+                const line = rawLine.endsWith('\r') ? rawLine.slice(0, -1) : rawLine;
+                if (line === '') {
+                    flushDataEvent(true);
+                    continue;
+                }
+                if (!line.startsWith('data:')) continue;
+                const dataText = line.slice(5).trimStart();
+                if (dataText === '[DONE]') {
+                    flushDataEvent(true);
+                    streamComplete = true;
+                    break;
+                }
+                pendingDataLines.push(dataText);
+                flushDataEvent(false);
+            }
+            if (done) break;
+        }
+        flushDataEvent(true);
+        return { doneMarkerSeen: streamComplete };
+    }
+
+    async function callApi(userMessageContent, chat) {
+        const chatIdentity = getChatIdentity(chat);
+        let apiConfig;
+        try {
+            apiConfig = snapshotCurrentApiConfig();
+        } catch (_) {
             alert(t('errorConfigIncomplete') || "API Configuration missing.");
-            return;
+            persistArchivedChat(chat, chatIdentity);
+            return false;
         }
 
-        // Add Thinking Message
+        const historySnapshot = chat
+            .filter(msg => !msg.isTempStatus && !msg.isThinking && !msg.excludeFromApiHistory)
+            .map(msg => ({ ...msg, parts: (msg.parts || []).map(part => ({ ...part })) }));
+        const lastHistoryMessage = historySnapshot[historySnapshot.length - 1];
+        const lastHistoryText = lastHistoryMessage?.parts?.map(part => part.text || '').join('\n') || '';
+        if (lastHistoryMessage?.role !== 'user' || lastHistoryText !== userMessageContent) {
+            historySnapshot.push({ role: 'user', parts: [{ text: userMessageContent }], timestamp: Date.now() });
+        }
+
+        const { apiType, apiKey, apiEndpoint, modelName } = apiConfig;
+        const historyForAPI = buildBoundedArchiveHistory(historySnapshot, apiType);
         const thinkingMsg = { role: 'model', parts: [{ text: t('thinking') || "Thinking..." }], timestamp: Date.now(), isThinking: true };
-        currentChat.push(thinkingMsg);
-        renderChatDetails(currentChat, currentChat[0].parts[0].text.substring(0, 20)); // Re-render to show thinking
+        chat.push(thinkingMsg);
+        renderChatDetails(chat, getChatTitle(chat));
 
-        let endpoint = '';
-        let requestBody = {};
-        let headers = { 'Content-Type': 'application/json' };
+        const headers = { 'Content-Type': 'application/json' };
+        let endpoint;
+        let requestBody;
+        if (apiType === 'gemini') {
+            const geminiRequest = GExtensionApi.buildGeminiRequest(apiKey, modelName, 'streamGenerateContent', { stream: true });
+            endpoint = geminiRequest.endpoint;
+            Object.assign(headers, geminiRequest.headers);
+            requestBody = { contents: historyForAPI };
+        } else if (apiType === 'openai') {
+            endpoint = apiEndpoint;
+            headers.Authorization = `Bearer ${apiKey}`;
+            requestBody = { model: modelName, messages: historyForAPI, stream: true };
+        } else {
+            removeChatMessage(chat, thinkingMsg);
+            chat.push({ role: 'model', parts: [{ text: `Error: unsupported API type ${apiType}` }], timestamp: Date.now() });
+            persistArchivedChat(chat, chatIdentity);
+            renderChatDetails(chat, getChatTitle(chat));
+            return false;
+        }
 
-        const historyForAPI = currentChat
-            .filter(msg => msg.timestamp < thinkingMsg.timestamp && !msg.isTempStatus && !msg.isThinking)
-            .map(msg => {
-                const textContent = msg.parts.map(part => part.text).join('\n');
-                if (currentApiType === 'openai') {
-                    return {
-                        role: msg.role === 'model' ? 'assistant' : msg.role,
-                        content: textContent
-                    };
-                } else { // Gemini
-                    return {
-                        role: msg.role,
-                        parts: [{ text: textContent }]
-                    };
-                }
-            });
-
+        const controller = new AbortController();
+        activeArchiveRequestController = controller;
+        archiveRequestCancelled = false;
+        if (archiveStopBtn) archiveStopBtn.style.display = 'inline-flex';
+        let requestTimedOut = false;
+        let reader = null;
+        let aiMsg = null;
+        const totalTimeout = setTimeout(() => {
+            requestTimedOut = true;
+            controller.abort();
+        }, ARCHIVE_API_TIMEOUT_MS);
         try {
-            let responseText = "";
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                headers,
+                body: JSON.stringify(requestBody),
+                signal: controller.signal
+            });
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            if (!response.body) throw new Error('The API response did not include a readable stream.');
 
-            if (currentApiType === 'gemini') {
-                endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${currentModelName}:streamGenerateContent?key=${currentApiKey}&alt=sse`;
-                requestBody = { contents: historyForAPI }; // History already includes the new user message
+            removeChatMessage(chat, thinkingMsg);
+            aiMsg = {
+                role: 'model',
+                parts: [{ text: '' }],
+                timestamp: Date.now(),
+                isStreaming: true,
+                excludeFromApiHistory: true
+            };
+            chat.push(aiMsg);
+            renderChatDetails(chat, getChatTitle(chat));
+            const allMessages = chatDetailContainer.querySelectorAll('.message');
+            streamingArchiveMessageElement = allMessages[allMessages.length - 1];
+            reader = response.body.getReader();
 
-                const response = await fetch(endpoint, {
-                    method: 'POST',
-                    headers: headers,
-                    body: JSON.stringify(requestBody)
-                });
-
-                if (!response.ok) throw new Error(`HTTP ${response.status}`);
-
-                const reader = response.body.getReader();
-                const decoder = new TextDecoder();
-
-                // Remove thinking message
-                currentChat.pop();
-                const aiMsg = { role: 'model', parts: [{ text: "" }], timestamp: Date.now() };
-                currentChat.push(aiMsg);
-
-                // Render the chat to create DOM elements, then grab reference to the new message
-                renderChatDetails(currentChat, currentChat[0].parts[0].text.substring(0, 20));
-                // Get the last message element (the one we just added)
-                const allMessages = chatDetailContainer.querySelectorAll('.message');
-                streamingArchiveMessageElement = allMessages[allMessages.length - 1];
-
-                while (true) {
-                    const { done, value } = await reader.read();
-                    if (done) break;
-                    const chunk = decoder.decode(value, { stream: true });
-                    const lines = chunk.split('\n');
-                    for (const line of lines) {
-                        if (line.startsWith('data: ')) {
-                            const dataStr = line.substring(6).trim();
-                            if (dataStr === '[DONE]') break;
-                            try {
-                                const data = JSON.parse(dataStr);
-                                if (data.candidates && data.candidates[0].content && data.candidates[0].content.parts) {
-                                    const text = data.candidates[0].content.parts[0].text;
-                                    responseText += text;
-                                    aiMsg.parts[0].text = responseText;
-                                    // Update only the streaming message instead of re-rendering
-                                    updateStreamingArchiveMessage(responseText);
-                                }
-                            } catch (e) { /* ignore parse errors */ }
-                        }
-                    }
+            let responseText = '';
+            let providerFinished = false;
+            const streamState = await consumeArchiveSse(reader, controller, data => {
+                if (apiType === 'gemini' && data.candidates?.some(candidate => candidate.finishReason)) {
+                    providerFinished = true;
                 }
-            } else if (currentApiType === 'openai') {
-                endpoint = currentApiEndpoint;
-                headers['Authorization'] = `Bearer ${currentApiKey}`;
-                requestBody = {
-                    model: currentModelName,
-                    messages: historyForAPI,
-                    stream: true
-                };
-
-                const response = await fetch(endpoint, {
-                    method: 'POST',
-                    headers: headers,
-                    body: JSON.stringify(requestBody)
-                });
-
-                if (!response.ok) throw new Error(`HTTP ${response.status}`);
-
-                const reader = response.body.getReader();
-                const decoder = new TextDecoder();
-
-                // Remove thinking message
-                currentChat.pop();
-                const aiMsg = { role: 'model', parts: [{ text: "" }], timestamp: Date.now() };
-                currentChat.push(aiMsg);
-
-                // Render the chat to create DOM elements, then grab reference to the new message
-                renderChatDetails(currentChat, currentChat[0].parts[0].text.substring(0, 20));
-                // Get the last message element (the one we just added)
-                const allMessages = chatDetailContainer.querySelectorAll('.message');
-                streamingArchiveMessageElement = allMessages[allMessages.length - 1];
-
-                while (true) {
-                    const { done, value } = await reader.read();
-                    if (done) break;
-                    const chunk = decoder.decode(value, { stream: true });
-                    const lines = chunk.split('\n');
-                    for (const line of lines) {
-                        if (line.startsWith('data: ')) {
-                            const dataStr = line.substring(6).trim();
-                            if (dataStr === '[DONE]') break;
-                            try {
-                                const data = JSON.parse(dataStr);
-                                if (data.choices && data.choices[0].delta && data.choices[0].delta.content) {
-                                    const text = data.choices[0].delta.content;
-                                    responseText += text;
-                                    aiMsg.parts[0].text = responseText;
-                                    updateStreamingArchiveMessage(responseText);
-                                }
-                            } catch (e) { /* ignore */ }
-                        }
-                    }
+                if (apiType === 'openai' && data.choices?.some(choice => choice.finish_reason)) {
+                    providerFinished = true;
                 }
+                const chunkText = apiType === 'gemini'
+                    ? data.candidates?.[0]?.content?.parts?.map(part => part.text || '').join('') || ''
+                    : data.choices?.[0]?.delta?.content || '';
+                if (!chunkText) return;
+                if (responseText.length + chunkText.length > MAX_ARCHIVE_RESPONSE_CHARS) {
+                    throw archiveStreamError('API_RESPONSE_TOO_LARGE', 'API response exceeded the safe size limit.');
+                }
+                responseText += chunkText;
+                aiMsg.parts[0].text = responseText;
+                updateStreamingArchiveMessage(responseText, streamingArchiveMessageElement);
+            });
+            if (!responseText) throw new Error('The API returned an empty stream.');
+            if (!streamState.doneMarkerSeen && !providerFinished) {
+                throw archiveStreamError('API_STREAM_INCOMPLETE', 'API stream ended before a completion marker was received.');
             }
 
-            // Apply markdown formatting to the final message
-            finalizeStreamingArchiveMessage();
-            saveArchivedChats(); // Save after response
-
+            delete aiMsg.isStreaming;
+            delete aiMsg.excludeFromApiHistory;
+            finalizeStreamingArchiveMessage(streamingArchiveMessageElement);
+            persistArchivedChat(chat, chatIdentity);
+            return true;
         } catch (error) {
             console.error("API Error:", error);
-            currentChat.pop(); // Remove thinking
-            currentChat.push({ role: 'model', parts: [{ text: `Error: ${error.message}` }], timestamp: Date.now() });
-            renderChatDetails(currentChat, currentChat[0].parts[0].text.substring(0, 20));
+            removeChatMessage(chat, thinkingMsg);
+            if (aiMsg) removeChatMessage(chat, aiMsg);
+            const message = archiveRequestCancelled
+                ? `Error: ${t('requestCancelled')}`
+                : requestTimedOut || error?.name === 'AbortError' || error?.name === 'TimeoutError'
+                ? 'Error: API request timed out.'
+                : `Error: ${error.message}`;
+            chat.push({
+                role: 'model',
+                parts: [{ text: message }],
+                timestamp: Date.now(),
+                excludeFromApiHistory: true
+            });
+            renderChatDetails(chat, getChatTitle(chat));
+            persistArchivedChat(chat, chatIdentity);
+            return false;
+        } finally {
+            clearTimeout(totalTimeout);
+            if (activeArchiveRequestController === controller) {
+                activeArchiveRequestController = null;
+                if (archiveStopBtn) archiveStopBtn.style.display = 'none';
+            }
+            if (reader) {
+                try {
+                    await reader.cancel();
+                } catch (_) {
+                    // The stream may already be closed or aborted.
+                }
+            }
         }
     }
 
     async function handleSendMessage() {
+        if (isArchiveRequestInFlight) return;
         const text = archiveChatInput.value.trim();
         if (!text) return;
 
@@ -408,21 +589,33 @@ document.addEventListener('DOMContentLoaded', async function () {
         archiveChatInput.style.height = 'auto';
 
         // Add User Message
-        activeChat.push({ role: 'user', parts: [{ text: text }], timestamp: Date.now() });
-        renderChatDetails(activeChat, activeChat[0].parts[0].text.substring(0, 20));
+        const requestChat = activeChat;
+        const requestChatIdentity = activeChatIdentity || getChatIdentity(requestChat);
+        requestChat.push({ role: 'user', parts: [{ text: text }], timestamp: Date.now() });
+        renderChatDetails(requestChat, getChatTitle(requestChat));
+        persistArchivedChat(requestChat, requestChatIdentity);
 
         // Scroll to bottom
         const msgContainer = document.querySelector('.chat-detail-view');
         if (msgContainer) msgContainer.scrollTop = msgContainer.scrollHeight;
 
-        await callApi(text, activeChat);
+        isArchiveRequestInFlight = true;
+        if (archiveSendBtn) archiveSendBtn.disabled = true;
+        if (archiveChatInput) archiveChatInput.disabled = true;
+        try {
+            await callApi(text, requestChat);
+        } finally {
+            isArchiveRequestInFlight = false;
+            if (archiveSendBtn) archiveSendBtn.disabled = false;
+            if (archiveChatInput) archiveChatInput.disabled = false;
+        }
     }
 
     // Efficiently update only the streaming message content
-    function updateStreamingArchiveMessage(text) {
-        if (!streamingArchiveMessageElement) return;
+    function updateStreamingArchiveMessage(text, messageElement = streamingArchiveMessageElement) {
+        if (!messageElement) return;
 
-        const contentWrapper = streamingArchiveMessageElement.querySelector('.message-content');
+        const contentWrapper = messageElement.querySelector('.message-content');
         if (contentWrapper) {
             // Use plain text during streaming for performance
             contentWrapper.textContent = text;
@@ -436,14 +629,14 @@ document.addEventListener('DOMContentLoaded', async function () {
     }
 
     // Apply markdown to the final streamed message
-    function finalizeStreamingArchiveMessage() {
-        if (!streamingArchiveMessageElement) return;
+    function finalizeStreamingArchiveMessage(messageElement = streamingArchiveMessageElement) {
+        if (!messageElement) return;
 
-        const contentWrapper = streamingArchiveMessageElement.querySelector('.message-content');
+        const contentWrapper = messageElement.querySelector('.message-content');
         if (contentWrapper) {
             const text = contentWrapper.textContent;
             try {
-                contentWrapper.innerHTML = marked.parse(text);
+                contentWrapper.innerHTML = renderSafeMarkdown(text);
             } catch (e) {
                 console.error("Error parsing final markdown:", e);
                 const escaped = text.replace(/&/g, '&amp;')
@@ -460,6 +653,7 @@ document.addEventListener('DOMContentLoaded', async function () {
 
     function renderChatDetails(chat, titleText) {
         activeChat = chat; // Set active chat
+        activeChatIdentity = getChatIdentity(chat);
         chatDetailContainer.innerHTML = '';
 
         // Show input container
@@ -478,13 +672,18 @@ document.addEventListener('DOMContentLoaded', async function () {
 
         deleteBtn.onclick = () => {
             if (confirm(t('confirmDeleteChat').replace('{title}', titleText))) {
-                const originalIndex = archivedChats.findIndex(originalChat => originalChat === chat);
+                const chatIdentity = getChatIdentity(chat);
+                const originalIndex = archivedChats.findIndex(originalChat => getChatIdentity(originalChat) === chatIdentity);
                 if (originalIndex !== -1) {
                     archivedChats.splice(originalIndex, 1);
-                    saveArchivedChats();
+                    void conversationStoreRequest('conversationStoreDelete', {
+                        kind: 'archive',
+                        id: chatIdentity
+                    }).catch(reportStorageError);
                     renderArchivedChatsList();
                     renderEmptyState();
                     activeChat = null;
+                    activeChatIdentity = null;
                 }
             }
         };
@@ -515,7 +714,8 @@ document.addEventListener('DOMContentLoaded', async function () {
             const copyBtn = document.createElement('button');
             copyBtn.classList.add('copy-btn');
             copyBtn.innerHTML = '📋'; // Simple icon, can be SVG
-            copyBtn.title = 'Copy';
+            copyBtn.title = t('copyMessage');
+            copyBtn.setAttribute('aria-label', t('copyMessage'));
             copyBtn.onclick = async () => {
                 if (msg.parts && msg.parts[0] && typeof msg.parts[0].text === 'string') {
                     try {
@@ -532,11 +732,14 @@ document.addEventListener('DOMContentLoaded', async function () {
 
             let contentHtml = t('contentUnavailable');
             if (msg.parts && msg.parts[0] && typeof msg.parts[0].text === 'string') {
-                // Use marked to render Markdown
-                try {
-                    contentHtml = marked.parse(msg.parts[0].text);
-                } catch (e) {
-                    console.error("Markdown parse error:", e);
+                if (msg.role === 'model' && typeof renderSafeMarkdown === 'function') {
+                    try {
+                        contentHtml = renderSafeMarkdown(msg.parts[0].text);
+                    } catch (e) {
+                        console.error("Markdown parse error:", e);
+                        contentHtml = escapeHtml(msg.parts[0].text).replace(/\n/g, '<br>');
+                    }
+                } else {
                     contentHtml = escapeHtml(msg.parts[0].text).replace(/\n/g, '<br>');
                 }
             }
@@ -551,48 +754,87 @@ document.addEventListener('DOMContentLoaded', async function () {
         });
     }
 
-    function loadArchivedChats() {
-        chrome.storage.local.get(['geminiArchivedChats'], (result) => {
-            if (result.geminiArchivedChats) {
-                archivedChats = result.geminiArchivedChats;
-            } else {
-                archivedChats = [];
-            }
+    async function loadArchivedChats() {
+        try {
+            const result = await conversationStoreRequest('conversationStoreList', { kind: 'archive' });
+            archivedChats = result.records.map(record => {
+                if (record.messages[0]) record.messages[0].archiveConversationId = record.id;
+                return record.messages;
+            });
+            let identityAdded = false;
+            archivedChats.forEach(chat => {
+                const firstMessage = Array.isArray(chat) ? chat[0] : null;
+                if (firstMessage && !firstMessage.archiveConversationId) {
+                    getChatIdentity(chat);
+                    identityAdded = true;
+                }
+            });
+            if (identityAdded) saveArchivedChats();
             renderArchivedChatsList();
-        });
+        } catch (error) {
+            archivedChats = [];
+            renderArchivedChatsList();
+            reportStorageError(error);
+        }
     }
 
     function saveArchivedChats() {
-        chrome.storage.local.set({ 'geminiArchivedChats': archivedChats });
+        archivedChats.forEach(chat => {
+            const identity = getChatIdentity(chat);
+            if (!identity) return;
+            void conversationStoreRequest('conversationStoreUpsert', {
+                kind: 'archive',
+                id: identity,
+                messages: chat
+            }).catch(reportStorageError);
+        });
     }
 
     if (clearAllArchivedButton) {
         clearAllArchivedButton.addEventListener('click', () => {
             if (confirm(t('confirmClearAll'))) {
                 archivedChats = [];
-                saveArchivedChats();
+                activeChat = null;
+                activeChatIdentity = null;
+                void conversationStoreRequest('conversationStoreClear', { kind: 'archive' })
+                    .catch(reportStorageError);
                 renderArchivedChatsList();
                 renderEmptyState();
             }
         });
     }
 
-    chrome.storage.onChanged.addListener((changes, namespace) => {
-        if (namespace === 'local' && changes.geminiArchivedChats) {
-            archivedChats = changes.geminiArchivedChats.newValue || [];
-            renderArchivedChatsList();
-            // If the currently viewed chat is deleted (not in new list), show empty state
-            // This is a bit complex to track perfectly without IDs, but re-rendering list is safe.
-            // For now, let's just keep the view if possible or reset if list is empty.
-            if (archivedChats.length === 0) {
-                renderEmptyState();
-            }
+    chrome.runtime.onMessage.addListener((message, sender) => {
+        const isBackgroundSender = sender?.id === chrome.runtime.id && !sender.tab &&
+            (!sender.url || sender.url === chrome.runtime.getURL('background.js'));
+        if (message?.type === 'CONVERSATION_STORE_CHANGED' && message.kind === 'archive' && isBackgroundSender) {
+            const selectedIdentity = activeChatIdentity;
+            void loadArchivedChats().then(() => {
+                const reboundChat = selectedIdentity
+                    ? archivedChats.find(chat => getChatIdentity(chat) === selectedIdentity) || null
+                    : null;
+                if (reboundChat) {
+                    activeChat = reboundChat;
+                    activeChatIdentity = selectedIdentity;
+                    renderChatDetails(reboundChat, getChatTitle(reboundChat));
+                } else if (selectedIdentity || archivedChats.length === 0) {
+                    activeChat = null;
+                    activeChatIdentity = null;
+                    renderEmptyState();
+                }
+            });
         }
+    });
+
+    chrome.storage.onChanged.addListener((changes, namespace) => {
         if (namespace === 'sync' && changes.interfaceLanguage) {
             currentLanguage = changes.interfaceLanguage.newValue || 'zh';
             updateInterfaceLanguage();
             renderArchivedChatsList();
             renderEmptyState();
+        }
+        if (namespace === 'sync' && (changes.apiConfigurations || changes.activeConfigurationId)) {
+            void initializeApi();
         }
     });
 

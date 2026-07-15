@@ -149,6 +149,12 @@ body {
 }
 
 .chat-item {
+    display: block;
+    width: 100%;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    text-align: left;
     position: relative;
     padding: 13px 14px 13px 16px;
     margin-bottom: 8px;
@@ -220,6 +226,19 @@ body {
 .btn-danger:hover {
     border-color: rgba(220, 38, 38, 0.26);
     transform: translateY(-1px);
+}
+
+.btn-danger:disabled {
+    opacity: 0.48;
+    cursor: not-allowed;
+    transform: none;
+}
+
+button:focus-visible,
+textarea:focus-visible,
+a:focus-visible {
+    outline: 3px solid rgba(37, 99, 235, 0.45);
+    outline-offset: 2px;
 }
 
 .main-content {
@@ -530,5 +549,16 @@ body {
 
     .chat-title-large {
         font-size: 1.05rem;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        scroll-behavior: auto !important;
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
     }
 }

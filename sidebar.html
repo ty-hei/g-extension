@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh-CN">
 
 <head>
   <title>智能助手</title>
@@ -12,7 +12,7 @@
     <div class="controls-primary">
       <button id="summarizePageButton" data-i18n="summarizePage">总结当前网页</button>
       <button id="extractContentButton" data-i18n="extractContent">提取全文作为引用</button>
-      <button id="toggleMoreActionsButton" class="icon-button" title="更多操作">⚙️</button>
+      <button id="toggleMoreActionsButton" class="icon-button" title="更多操作" aria-label="更多操作">⚙️</button>
     </div>
 
     <div id="moreActionsMenu" class="controls-secondary" style="display: none;">
@@ -57,7 +57,7 @@
       </div>
     </div>
 
-    <div class="prompt-shortcuts-container">
+    <div id="promptShortcutsSection" class="prompt-shortcuts-container" hidden>
       <h4 data-i18n="promptShortcuts">Prompt 快捷方式:</h4>
       <div id="promptShortcuts" class="prompt-shortcuts">
       </div>
@@ -65,6 +65,11 @@
 
     <div class="chat-area">
       <div id="chatOutput">
+        <div class="chat-empty-state">
+          <span class="chat-empty-state-icon" aria-hidden="true">✦</span>
+          <strong data-i18n="emptyChatTitle">从当前网页开始</strong>
+          <p data-i18n="emptyChatBody">总结页面、提取全文，或在下方直接输入问题。</p>
+        </div>
       </div>
 
       <div id="selectedImagePreviewContainer" style="display:none; margin-bottom: 5px; text-align: center;">
@@ -75,17 +80,22 @@
       <div id="selectedTextPreview"
         style="display:none; font-style: italic; color: gray; padding: 5px; border: 1px dashed #ccc; margin-bottom: 5px;">
         <span data-i18n="quoteContent">引用内容:</span> <span id="selectedTextContent"></span>
+        <button id="copySelectedTextButton" data-i18n="copyQuote" style="margin-left: 5px; font-size: 0.8em;">复制</button>
         <button id="clearSelectedTextButton" data-i18n="clear" style="margin-left: 5px; font-size: 0.8em;">清除</button>
       </div>
       <textarea id="chatInput" placeholder="输入消息或使用快捷方式..."></textarea>
       <div class="send-area-container">
         <button id="sendMessageButton" data-i18n="send">发送</button>
+        <button id="stopRequestButton" type="button" data-i18n="stopRequest" style="display: none;">停止</button>
         <span id="sendShortcutHint" class="shortcut-hint" data-i18n="sendShortcut">Cmd+Enter</span>
-        <button id="clearAllHistoryButton" title="清除所有历史">🗑️</button>
+        <button id="clearAllHistoryButton" title="清除所有历史" aria-label="清除所有历史">🗑️</button>
       </div>
     </div>
   </div>
   <script src="/libs/marked.min.js"></script>
+  <script src="/libs/safe_markdown.js"></script>
+  <script src="/api_config.js"></script>
+  <script src="/regex_engine.js"></script>
   <script src="sidebar.js"></script>
 </body>
 

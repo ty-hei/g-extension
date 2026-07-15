@@ -1,0 +1,207 @@
+'use strict';
+
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const vm = require('node:vm');
+
+const ROOT = path.resolve(__dirname, '..');
+const CONTENT_SCRIPT_PATH = path.join(ROOT, 'content_script.js');
+const CONTENT_SCRIPT_SOURCE = fs.readFileSync(CONTENT_SCRIPT_PATH, 'utf8');
+
+function toPlain(value) {
+  return JSON.parse(JSON.stringify(value));
+}
+
+function createHarness(options = {}) {
+  const listeners = new Map();
+  const messages = [];
+  let selectionReads = 0;
+  const context = vm.createContext({
+    chrome: {
+      runtime: {
+        async sendMessage(message) {
+          messages.push(toPlain(message));
+          if (typeof options.sendMessage === 'function') {
+            return options.sendMessage(message, messages.length);
+          }
+          return {};
+        }
+      }
+    },
+    document: {
+      addEventListener(type, listener) {
+        listeners.set(type, listener);
+      }
+    },
+    window: {
+      getSelection() {
+        selectionReads += 1;
+        return typeof options.getSelection === 'function'
+          ? options.getSelection()
+          : null;
+      }
+    },
+    Element: class Element {},
+    URL,
+    setTimeout,
+    clearTimeout
+  });
+  vm.runInContext(CONTENT_SCRIPT_SOURCE, context, { filename: CONTENT_SCRIPT_PATH });
+  return {
+    listeners,
+    messages,
+    get selectionReads() {
+      return selectionReads;
+    },
+    getBinding(name) {
+      return vm.runInContext(name, context);
+    }
+  };
+}
+
+test('selection capture asks permission before reading page selection', async function () {
+  const harness = createHarness({
+    sendMessage(message) {
+      assert.equal(message.action, 'shouldCaptureSelection');
+      return { capture: false };
+    },
+    getSelection() {
+      throw new Error('selection must not be observed without permission');
+    }
+  });
+
+  await harness.listeners.get('mouseup')({ isTrusted: true });
+
+  assert.deepEqual(harness.messages, [{ action: 'shouldCaptureSelection' }]);
+  assert.equal(harness.selectionReads, 0);
+});
+
+test('permitted selection is trimmed, surrogate-safe, and bounded before messaging', async function () {
+  const selectedText = ' '.repeat(3) + 'A'.repeat(199999) + '😀B ';
+  const harness = createHarness({
+    sendMessage(message) {
+      if (message.action === 'shouldCaptureSelection') return { capture: true };
+      return { accepted: true };
+    },
+    getSelection() {
+      return {
+        toString() {
+          return selectedText;
+        }
+      };
+    }
+  });
+
+  await harness.listeners.get('mouseup')({ isTrusted: true });
+
+  assert.equal(harness.selectionReads, 1);
+  assert.equal(harness.messages.length, 2);
+  assert.deepEqual(harness.messages[0], { action: 'shouldCaptureSelection' });
+  assert.equal(harness.messages[1].action, 'TEXT_SELECTED_FROM_PAGE');
+  assert.equal(harness.messages[1].text.length, 199999);
+  assert.equal(harness.messages[1].text, 'A'.repeat(199999));
+  assert.doesNotMatch(harness.messages[1].text, /[\uD800-\uDBFF]$/);
+});
+
+test('empty selections and extension messaging failures do not leak follow-up messages', async function () {
+  const emptyHarness = createHarness({
+    sendMessage() {
+      return { capture: true };
+    },
+    getSelection() {
+      return { toString: () => ' \n\t ' };
+    }
+  });
+  await emptyHarness.listeners.get('mouseup')({ isTrusted: true });
+  assert.deepEqual(emptyHarness.messages, [{ action: 'shouldCaptureSelection' }]);
+
+  const rejectedHarness = createHarness({
+    sendMessage() {
+      throw new Error('extension reloaded');
+    },
+    getSelection() {
+      throw new Error('must not be reached after permission failure');
+    }
+  });
+  await assert.doesNotReject(rejectedHarness.listeners.get('mouseup')({ isTrusted: true }));
+  assert.deepEqual(rejectedHarness.messages, [{ action: 'shouldCaptureSelection' }]);
+  assert.equal(rejectedHarness.selectionReads, 0);
+
+  const deliveryFailureHarness = createHarness({
+    sendMessage(message) {
+      if (message.action === 'shouldCaptureSelection') return { capture: true };
+      throw new Error('side panel closed');
+    },
+    getSelection() {
+      return { toString: () => 'still safe' };
+    }
+  });
+  await assert.doesNotReject(deliveryFailureHarness.listeners.get('mouseup')({ isTrusted: true }));
+  assert.deepEqual(deliveryFailureHarness.messages, [
+    { action: 'shouldCaptureSelection' },
+    { action: 'TEXT_SELECTED_FROM_PAGE', text: 'still safe' }
+  ]);
+});
+
+test('drag URL parsing canonicalizes safe HTTP URLs and handles URI-list comments', function () {
+  const harness = createHarness();
+  const normalizeHttpUrl = harness.getBinding('normalizeHttpUrl');
+
+  assert.equal(
+    normalizeHttpUrl('  HTTPS://EXAMPLE.TEST:443/a b?q=1  '),
+    'https://example.test/a%20b?q=1'
+  );
+  assert.equal(
+    normalizeHttpUrl('# generated by browser\r\n  https://example.test/first  \r\nhttps://example.test/second'),
+    'https://example.test/first'
+  );
+  assert.equal(
+    normalizeHttpUrl('\n\t# comment\n\nhttps://example.test/article#part'),
+    'https://example.test/article#part'
+  );
+});
+
+test('drag URL parsing rejects non-web schemes, credentials, relatives, and malformed hosts', function () {
+  const harness = createHarness();
+  const normalizeHttpUrl = harness.getBinding('normalizeHttpUrl');
+  const rejected = [
+    'javascript:alert(1)',
+    'data:text/html,<script>alert(1)</script>',
+    'file:///etc/passwd',
+    'blob:https://example.test/id',
+    'ftp://example.test/file',
+    '//example.test/path',
+    '/relative/path',
+    'https://user@example.test/private',
+    'https://user:secret@example.test/private',
+    'https://%75ser@example.test/private',
+    'https://example.test:99999/path',
+    'https://exa mple.test/path',
+    '# only a comment\n# still a comment'
+  ];
+
+  for (const input of rejected) {
+    assert.equal(normalizeHttpUrl(input), null, input);
+  }
+});
+
+test('drag URL parsing enforces raw, candidate, and canonicalized length boundaries', function () {
+  const harness = createHarness();
+  const normalizeHttpUrl = harness.getBinding('normalizeHttpUrl');
+  const base = 'https://example.test/';
+  const exactCandidate = base + 'a'.repeat(8192 - base.length);
+  const oversizedCandidate = exactCandidate + 'a';
+  const oversizedRaw = base + '\n#' + 'x'.repeat(16384);
+
+  assert.equal(exactCandidate.length, 8192);
+  assert.equal(normalizeHttpUrl(exactCandidate), exactCandidate);
+  assert.equal(normalizeHttpUrl(oversizedCandidate), null);
+  assert.equal(normalizeHttpUrl(oversizedRaw), null);
+
+  // A Unicode hostname/path can be within the raw limit but grow after URL canonicalization.
+  const canonicalExpansion = base + '😀'.repeat(3000);
+  assert.ok(canonicalExpansion.length < 8192);
+  assert.equal(normalizeHttpUrl(canonicalExpansion), null);
+});
